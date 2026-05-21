@@ -1,0 +1,22 @@
+$kind: http-request
+name: List Users
+method: GET
+url: '{{base_url}}/api/v1/users'
+order: 2000
+params:
+  - key: role
+    value: ''
+    description: 'Filter by role (e.g. admin, teacher). Leave empty for all.'
+    disabled: true
+  - key: is_active
+    value: 'true'
+    description: 'Filter by active status: true or false.'
+    disabled: true
+  - key: page
+    value: '1'
+    description: Page number for pagination.
+    disabled: true
+  - key: limit
+    value: '20'
+    description: Number of results per page.
+    disabled: true

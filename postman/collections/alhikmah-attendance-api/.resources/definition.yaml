@@ -1,0 +1,14 @@
+$kind: collection
+name: Alhikmah Attendance API
+description: |-
+  REST API for the Alhikmah Attendance system.
+  Manages authentication, users (admin/teacher roles), classes, students,
+  and attendance recording via QR scan or manual input.
+
+  Base URL: {{base_url}}
+  Authentication: Bearer JWT token — obtain via POST /api/v1/auth/login
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{auth_token}}'

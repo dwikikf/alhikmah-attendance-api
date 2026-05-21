@@ -1,0 +1,9 @@
+$kind: collection
+name: Users
+description: |-
+  User management endpoints.
+  - GET /users/me — fetch the currently authenticated user's profile.
+  - GET /users — list all users (admin only); supports filtering by role and is_active.
+  - POST /users — create a new user (admin only).
+  - PUT /users/:user_id — update a user's profile.
+order: 2000

@@ -1,0 +1,17 @@
+$kind: http-request
+name: Manual Attendance
+method: POST
+url: '{{base_url}}/api/v1/attendances/manual'
+order: 2000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "class_id": "{{class_id}}",
+      "student_ids": ["student-uuid-1", "student-uuid-2"],
+      "status": "present",
+      "notes": "Recorded manually by teacher"
+    }

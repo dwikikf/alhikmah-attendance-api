@@ -1,0 +1,18 @@
+$kind: http-request
+name: Create User
+method: POST
+url: '{{base_url}}/api/v1/users'
+order: 3000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "teacher01",
+      "email": "teacher01@alhikmah.sch.id",
+      "password": "securepassword",
+      "full_name": "Budi Santoso",
+      "role": "teacher"
+    }

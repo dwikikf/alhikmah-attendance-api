@@ -1,0 +1,14 @@
+$kind: http-request
+name: Scan Attendance
+method: POST
+url: '{{base_url}}/api/v1/attendances/scan'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "qr_code_data": "STUDENT_QR_CODE_PAYLOAD_HERE"
+    }

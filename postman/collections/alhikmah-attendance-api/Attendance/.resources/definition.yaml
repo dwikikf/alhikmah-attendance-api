@@ -1,0 +1,8 @@
+$kind: collection
+name: Attendance
+description: |-
+  Attendance recording endpoints.
+  - POST /attendances/scan — record attendance via QR code scan.
+  - POST /attendances/manual — record attendance manually for multiple students.
+  - GET /classes/:class_id/attendances/today — fetch today's attendance for a class.
+order: 5000

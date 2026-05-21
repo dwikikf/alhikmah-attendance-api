@@ -1,0 +1,7 @@
+$kind: collection
+name: Classes
+description: |-
+  Class management endpoints.
+  - GET /classes — list all classes; supports filtering by academic_year with pagination.
+  - GET /classes/:class_id — get details of a specific class.
+order: 3000

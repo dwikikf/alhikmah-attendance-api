@@ -1,0 +1,7 @@
+$kind: collection
+name: Students
+description: |-
+  Student management endpoints.
+  - POST /students — create a new student and assign to a class (admin only).
+  - GET /classes/:class_id/students — list all students in a specific class.
+order: 4000

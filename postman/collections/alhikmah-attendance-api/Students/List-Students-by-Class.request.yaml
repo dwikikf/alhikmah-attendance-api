@@ -1,0 +1,5 @@
+$kind: http-request
+name: List Students by Class
+method: GET
+url: '{{base_url}}/api/v1/classes/{{class_id}}/students'
+order: 2000
