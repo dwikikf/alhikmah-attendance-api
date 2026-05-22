@@ -43,6 +43,7 @@ func main() {
 	attendanceRepo := repository.NewAttendanceRepository(db)
 	reportRepo := repository.NewReportRepository(db)
 	reportCacheRepo := repository.NewReportCacheRepository(db)
+	dashboardRepo := repository.NewDashboardRepository(db)
 
 	// 5. Initialize Services
 	userService := service.NewUserService(userRepo)
@@ -50,6 +51,7 @@ func main() {
 	studentService := service.NewStudentService(studentRepo)
 	attendanceService := service.NewAttendanceService(attendanceRepo, studentRepo)
 	reportService := service.NewReportService(reportRepo, studentRepo, reportCacheRepo)
+	dashboardService := service.NewDashboardService(dashboardRepo)
 
 	// 6. Initialize Handlers
 	authHandler := &handler.AuthHandler{
@@ -61,6 +63,7 @@ func main() {
 	studentHandler := handler.NewStudentHandler(studentService)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 	reportHandler := handler.NewReportHandler(reportService)
+	dashboardHandler := handler.NewDashboardHandler(dashboardService)
 
 	// 7. Setup Gin Router
 	r := gin.Default()
@@ -135,6 +138,10 @@ func main() {
 			protected.PUT("/attendances/:attendance_id", attendanceHandler.Update)
 			protected.GET("/classes/:class_id/attendances/today", attendanceHandler.GetClassAttendanceForToday)
 			protected.GET("/attendances/:class_id/:date", attendanceHandler.GetByClassAndDate)
+
+			// Dashboard
+			protected.GET("/dashboard/recent-activity", dashboardHandler.GetRecentActivity)
+			protected.GET("/dashboard/attendance-trend", dashboardHandler.GetAttendanceTrend)
 
 			// Reports
 			protected.GET("/reports/daily", reportHandler.GetDailyReport)

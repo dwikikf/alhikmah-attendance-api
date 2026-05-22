@@ -217,13 +217,13 @@ Filter (Kelas/Siswa/Status) → View → Download/Export/Print
 
 - **Language**: Go (Golang)
 - **Framework**: Gin Gonic (HTTP framework)
-- **Dependency Injection**: Wire (code generation tool for dependency injection)
+- **Dependency Injection**: Wire (code generation tool for dependency injection (optional))
 - **Database**: PostgreSQL + native SQL (database/sql package)
 - **Authentication**: JWT (golang-jwt)
 - **Middleware**: CORS, logging, error handling
 - **File Upload**: untuk export CSV/Excel/PDF
 - **Database Migration**: golang-migrate
-- **Development**: Air (live reload)
+- **Development**: Air (live reload(optional))
 - **Configuration**: Viper (config management)
 - **Libraries**:
   - `uuid`: Generate unique ID

@@ -98,26 +98,26 @@ func (r *studentPostgres) GetByClassID(classID string) ([]*domain.Student, error
 
 func (r *studentPostgres) GetAll(isActive *bool, page, limit int) ([]*domain.Student, int, error) {
 	offset := (page - 1) * limit
-	whereClause := "WHERE deleted_at IS NULL"
+	whereClause := "WHERE s.deleted_at IS NULL"
 	args := []interface{}{}
 	argId := 1
 
 	if isActive != nil {
-		whereClause += " AND is_active = $1"
+		whereClause += " AND s.is_active = $1"
 		args = append(args, *isActive)
 		argId++
 	}
 
-	countQuery := "SELECT COUNT(*) FROM students " + whereClause
+	countQuery := "SELECT COUNT(*) FROM students s " + whereClause
 	var total int
 	err := r.db.QueryRow(countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	query := "SELECT id, nisn, full_name, class_id, date_of_birth, gender, photo_url, qr_code_data, is_active, created_at, updated_at " +
-		"FROM students " + whereClause + " " +
-		"ORDER BY full_name ASC "
+	query := "SELECT s.id, s.nisn, s.full_name, s.class_id, c.class_name, s.date_of_birth, s.gender, s.photo_url, s.qr_code_data, s.is_active, s.created_at, s.updated_at " +
+		"FROM students s LEFT JOIN classes c ON s.class_id = c.id " + whereClause + " " +
+		"ORDER BY s.full_name ASC "
 
 	if argId == 1 {
 		query += "LIMIT $1 OFFSET $2"
@@ -136,9 +136,13 @@ func (r *studentPostgres) GetAll(isActive *bool, page, limit int) ([]*domain.Stu
 	var students []*domain.Student
 	for rows.Next() {
 		var s domain.Student
+		var className sql.NullString
 		var dob, gender, photoURL sql.NullString
-		if err := rows.Scan(&s.ID, &s.NISN, &s.FullName, &s.ClassID, &dob, &gender, &photoURL, &s.QRCodeData, &s.IsActive, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.NISN, &s.FullName, &s.ClassID, &className, &dob, &gender, &photoURL, &s.QRCodeData, &s.IsActive, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, 0, err
+		}
+		if className.Valid {
+			s.ClassName = className.String
 		}
 		if dob.Valid {
 			str := dob.String
@@ -156,6 +160,16 @@ func (r *studentPostgres) GetAll(isActive *bool, page, limit int) ([]*domain.Stu
 	}
 
 	return students, total, nil
+}
+
+func (r *studentPostgres) Update(student *domain.Student) error {
+	query := `
+		UPDATE students 
+		SET full_name = $1, class_id = $2, date_of_birth = $3, gender = $4, is_active = $5, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $6 AND deleted_at IS NULL
+	`
+	_, err := r.db.Exec(query, student.FullName, student.ClassID, student.DOB, student.Gender, student.IsActive, student.ID)
+	return err
 }
 
 func (r *studentPostgres) SoftDelete(id string) error {

@@ -146,9 +146,37 @@ func (h *StudentHandler) Delete(c *gin.Context) {
 }
 
 func (h *StudentHandler) Update(c *gin.Context) {
+	studentID := c.Param("student_id")
+	var req struct {
+		FullName string  `json:"full_name" binding:"required"`
+		ClassID  string  `json:"class_id" binding:"required"`
+		DOB      *string `json:"date_of_birth"`
+		Gender   *string `json:"gender"`
+		IsActive bool    `json:"is_active"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	student := &domain.Student{
+		ID:       studentID,
+		FullName: req.FullName,
+		ClassID:  req.ClassID,
+		DOB:      req.DOB,
+		Gender:   req.Gender,
+		IsActive: req.IsActive,
+	}
+
+	if err := h.service.Update(student); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Student updated (stub)",
+		"message": "Student updated successfully",
 	})
 }
 

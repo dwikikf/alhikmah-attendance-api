@@ -44,6 +44,10 @@ func (s *studentService) GetAll(isActive *bool, page, limit int) ([]*domain.Stud
 	return s.repo.GetAll(isActive, page, limit)
 }
 
+func (s *studentService) Update(student *domain.Student) error {
+	return s.repo.Update(student)
+}
+
 func (s *studentService) SoftDelete(id string) error {
 	return s.repo.SoftDelete(id)
 }
