@@ -2,14 +2,9 @@ name: Alhikmah Local
 values:
   - key: base_url
     value: 'http://localhost:8080'
-    enabled: true
-  - key: auth_token
-    value: ''
-    enabled: true
-    secret: true
   - key: user_id
     value: ''
-    enabled: true
   - key: class_id
     value: ''
-    enabled: true
+  - key: auth_token
+    value: ''

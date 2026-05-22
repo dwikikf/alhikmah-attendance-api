@@ -76,10 +76,12 @@ func (h *UserHandler) GetAll(c *gin.Context) {
 		"success": true,
 		"data":    users,
 		"pagination": gin.H{
-			"page":        page,
-			"limit":       limit,
-			"total":       total,
-			"total_pages": totalPages,
+			"page":            page,
+			"pageSize":        limit,
+			"totalItems":      total,
+			"totalPages":      totalPages,
+			"hasNextPage":     page < totalPages,
+			"hasPreviousPage": page > 1,
 		},
 	})
 }
@@ -152,5 +154,19 @@ func (h *UserHandler) Update(c *gin.Context) {
 		"success": true,
 		"data":    updatedUser,
 		"message": "User updated successfully",
+	})
+}
+
+func (h *UserHandler) Delete(c *gin.Context) {
+	id := c.Param("user_id")
+
+	if err := h.service.SoftDelete(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User deleted successfully",
 	})
 }

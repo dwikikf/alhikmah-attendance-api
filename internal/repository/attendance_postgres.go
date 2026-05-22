@@ -46,10 +46,8 @@ func (r *attendancePostgres) UpdateAttendance(attendance *domain.Attendance, aud
 		UPDATE attendances 
 		SET status = $1, recorded_by = $2, is_manual = true
 		WHERE id = $3
-		RETURNING status
 	`
-	var oldStatus string
-	err = tx.QueryRow(updateQuery, attendance.Status, attendance.RecordedBy, attendance.ID).Scan(&oldStatus)
+	_, err = tx.Exec(updateQuery, attendance.Status, attendance.RecordedBy, attendance.ID)
 	if err != nil {
 		return err
 	}
@@ -104,4 +102,36 @@ func (r *attendancePostgres) GetByClassAndDate(classID string, date time.Time) (
 	}
 
 	return attendances, nil
+}
+
+func (r *attendancePostgres) GetByID(id string) (*domain.Attendance, error) {
+	query := `
+		SELECT id, student_id, class_id, attendance_date, status, recorded_by, recorded_at, scanned_at, notes, is_manual
+		FROM attendances
+		WHERE id = $1
+	`
+	var a domain.Attendance
+	var scannedAt sql.NullTime
+	var notes sql.NullString
+
+	err := r.db.QueryRow(query, id).Scan(
+		&a.ID, &a.StudentID, &a.ClassID, &a.AttendanceDate, &a.Status,
+		&a.RecordedBy, &a.RecordedAt, &scannedAt, &notes, &a.IsManual,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		return nil, err
+	}
+
+	if scannedAt.Valid {
+		a.ScannedAt = &scannedAt.Time
+	}
+	if notes.Valid {
+		str := notes.String
+		a.Notes = &str
+	}
+
+	return &a, nil
 }

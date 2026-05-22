@@ -92,10 +92,10 @@ func (s *attendanceService) ManualInput(classID string, studentIDs []string, sta
 }
 
 func (s *attendanceService) UpdateManual(attendanceID, status, reason, changedBy string) error {
-	// Simplification: We need the full attendance object to log old status
-	// But since this is a demo, we will just update.
-	// Ideally, fetch first:
-	// a, _ := s.repo.GetByID(attendanceID)
+	a, err := s.repo.GetByID(attendanceID)
+	if err != nil {
+		return errors.New("attendance record not found")
+	}
 	
 	attendance := &domain.Attendance{
 		ID:         attendanceID,
@@ -103,8 +103,7 @@ func (s *attendanceService) UpdateManual(attendanceID, status, reason, changedBy
 		RecordedBy: changedBy,
 	}
 
-	// Mocking old status for audit
-	oldStatus := "hadir" 
+	oldStatus := a.Status
 	
 	audit := &domain.AttendanceAudit{
 		AttendanceID: attendanceID,
@@ -123,4 +122,8 @@ func (s *attendanceService) UpdateManual(attendanceID, status, reason, changedBy
 func (s *attendanceService) GetClassAttendanceForToday(classID string) ([]*domain.Attendance, error) {
 	today := time.Now().Truncate(24 * time.Hour)
 	return s.repo.GetByClassAndDate(classID, today)
+}
+
+func (s *attendanceService) GetByClassAndDate(classID string, date time.Time) ([]*domain.Attendance, error) {
+	return s.repo.GetByClassAndDate(classID, date)
 }

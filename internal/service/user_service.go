@@ -60,3 +60,7 @@ func (s *userService) Update(user *domain.User) error {
 
 	return s.repo.Update(user)
 }
+
+func (s *userService) SoftDelete(id string) error {
+	return s.repo.SoftDelete(id)
+}

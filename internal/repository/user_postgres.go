@@ -19,7 +19,7 @@ func (r *userPostgres) GetByID(id string) (*domain.User, error) {
 	var user domain.User
 	query := `
 		SELECT id, username, email, full_name, role, is_active, created_at, updated_at, last_login 
-		FROM users WHERE id = $1
+		FROM users WHERE id = $1 AND deleted_at IS NULL
 	`
 	err := r.db.QueryRow(query, id).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName, &user.Role,
@@ -32,8 +32,8 @@ func (r *userPostgres) GetByID(id string) (*domain.User, error) {
 }
 
 func (r *userPostgres) GetAll(role string, isActive *bool, offset, limit int) ([]*domain.User, int, error) {
-	query := `SELECT id, username, email, full_name, role, is_active, created_at, updated_at, last_login FROM users WHERE 1=1`
-	countQuery := `SELECT count(*) FROM users WHERE 1=1`
+	query := `SELECT id, username, email, full_name, role, is_active, created_at, updated_at, last_login FROM users WHERE deleted_at IS NULL`
+	countQuery := `SELECT count(*) FROM users WHERE deleted_at IS NULL`
 	
 	args := []interface{}{}
 	argId := 1
@@ -103,3 +103,10 @@ func (r *userPostgres) Update(user *domain.User) error {
 	`
 	return r.db.QueryRow(query, user.FullName, user.Email, user.ID).Scan(&user.UpdatedAt)
 }
+
+func (r *userPostgres) SoftDelete(id string) error {
+	query := `UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 AND deleted_at IS NULL`
+	_, err := r.db.Exec(query, id)
+	return err
+}
+

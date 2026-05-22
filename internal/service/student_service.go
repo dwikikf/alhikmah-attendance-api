@@ -39,3 +39,11 @@ func (s *studentService) GetByID(id string) (*domain.Student, error) {
 func (s *studentService) GetByClassID(classID string) ([]*domain.Student, error) {
 	return s.repo.GetByClassID(classID)
 }
+
+func (s *studentService) GetAll(isActive *bool, page, limit int) ([]*domain.Student, int, error) {
+	return s.repo.GetAll(isActive, page, limit)
+}
+
+func (s *studentService) SoftDelete(id string) error {
+	return s.repo.SoftDelete(id)
+}

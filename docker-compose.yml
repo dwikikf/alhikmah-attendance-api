@@ -15,6 +15,8 @@ services:
       - DB_NAME=${DB_NAME}
       - PORT=8080
       - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-supersecretrefreshjwttoken}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     depends_on:
       - db
     networks:

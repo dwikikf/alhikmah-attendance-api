@@ -19,10 +19,13 @@ func AuthMiddleware(cfg config.Config) gin.HandlerFunc {
 			return
 		}
 
-		extractedToken := strings.Split(clientToken, "Bearer ")
-		if len(extractedToken) == 2 {
-			clientToken = strings.TrimSpace(extractedToken[1])
-		} else {
+		// Handle different formats: "Bearer <token>", "bearer <token>", or just "<token>"
+		if strings.HasPrefix(strings.ToLower(clientToken), "bearer ") {
+			clientToken = clientToken[7:]
+		}
+		clientToken = strings.TrimSpace(clientToken)
+
+		if clientToken == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Incorrect Format of Authorization Token"})
 			c.Abort()
 			return
@@ -35,8 +38,9 @@ func AuthMiddleware(cfg config.Config) gin.HandlerFunc {
 			return
 		}
 
-		c.Set("userID", claims.UserID)
-		c.Set("username", claims.Username)
+		c.Set("userID", claims.Sub)
+		c.Set("email", claims.Email)
+		c.Set("name", claims.Name)
 		c.Set("role", claims.Role)
 		c.Next()
 	}

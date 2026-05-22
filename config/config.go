@@ -11,9 +11,11 @@ type Config struct {
 	DBPort     string `mapstructure:"DB_PORT"`
 	DBUser     string `mapstructure:"DB_USER"`
 	DBPassword string `mapstructure:"DB_PASSWORD"`
-	DBName     string `mapstructure:"DB_NAME"`
-	Port       string `mapstructure:"PORT"`
-	JWTSecret  string `mapstructure:"JWT_SECRET"`
+	DBName      string `mapstructure:"DB_NAME"`
+	Port             string `mapstructure:"PORT"`
+	JWTSecret        string `mapstructure:"JWT_SECRET"`
+	JWTRefreshSecret string `mapstructure:"JWT_REFRESH_SECRET"`
+	FrontendURL      string `mapstructure:"FRONTEND_URL"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -31,6 +33,8 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("DB_NAME")
 	viper.BindEnv("PORT")
 	viper.BindEnv("JWT_SECRET")
+	viper.BindEnv("JWT_REFRESH_SECRET")
+	viper.BindEnv("FRONTEND_URL")
 
 	err = viper.ReadInConfig()
 	if err != nil {

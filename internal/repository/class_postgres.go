@@ -18,16 +18,16 @@ func NewClassRepository(db *sql.DB) domain.ClassRepository {
 func (r *classPostgres) GetAll(teacherID string, academicYear string, offset, limit int) ([]*domain.Class, int, error) {
 	query := `
 		SELECT c.id, c.class_name, c.teacher_id, u.full_name, c.academic_year, c.capacity, c.description, c.created_at, c.updated_at,
-		       (SELECT count(*) FROM students s WHERE s.class_id = c.id AND s.is_active = true) as student_count
+		       (SELECT count(*) FROM students s WHERE s.class_id = c.id AND s.is_active = true AND s.deleted_at IS NULL) as student_count
 		FROM classes c
 		JOIN users u ON c.teacher_id = u.id
-		WHERE 1=1
+		WHERE c.deleted_at IS NULL
 	`
 	countQuery := `
 		SELECT count(*) 
 		FROM classes c
 		JOIN users u ON c.teacher_id = u.id
-		WHERE 1=1
+		WHERE c.deleted_at IS NULL
 	`
 
 	args := []interface{}{}
@@ -86,10 +86,10 @@ func (r *classPostgres) GetByID(id string) (*domain.Class, error) {
 	var desc sql.NullString
 	query := `
 		SELECT c.id, c.class_name, c.teacher_id, u.full_name, c.academic_year, c.capacity, c.description, c.created_at, c.updated_at,
-		       (SELECT count(*) FROM students s WHERE s.class_id = c.id AND s.is_active = true) as student_count
+		       (SELECT count(*) FROM students s WHERE s.class_id = c.id AND s.is_active = true AND s.deleted_at IS NULL) as student_count
 		FROM classes c
 		JOIN users u ON c.teacher_id = u.id
-		WHERE c.id = $1
+		WHERE c.id = $1 AND c.deleted_at IS NULL
 	`
 	err := r.db.QueryRow(query, id).Scan(
 		&c.ID, &c.ClassName, &c.TeacherID, &c.TeacherName, &c.AcademicYear, &c.Capacity, &desc, &c.CreatedAt, &c.UpdatedAt, &c.StudentCount,
@@ -101,4 +101,44 @@ func (r *classPostgres) GetByID(id string) (*domain.Class, error) {
 		c.Description = desc.String
 	}
 	return &c, nil
+}
+
+func (r *classPostgres) Create(class *domain.Class) error {
+	query := `
+		INSERT INTO classes (class_name, teacher_id, academic_year, capacity, description)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, created_at, updated_at
+	`
+	err := r.db.QueryRow(query, class.ClassName, class.TeacherID, class.AcademicYear, class.Capacity, class.Description).Scan(
+		&class.ID, &class.CreatedAt, &class.UpdatedAt,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *classPostgres) Update(class *domain.Class) error {
+	query := `
+		UPDATE classes 
+		SET class_name = $1, teacher_id = $2, capacity = $3, description = $4, updated_at = NOW()
+		WHERE id = $5
+		RETURNING updated_at
+	`
+	err := r.db.QueryRow(query, class.ClassName, class.TeacherID, class.Capacity, class.Description, class.ID).Scan(
+		&class.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("class not found")
+		}
+		return err
+	}
+	return nil
+}
+
+func (r *classPostgres) SoftDelete(id string) error {
+	query := `UPDATE classes SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 AND deleted_at IS NULL`
+	_, err := r.db.Exec(query, id)
+	return err
 }

@@ -7,11 +7,12 @@ type User struct {
 	Username     string    `json:"username"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"-"`
-	FullName     string    `json:"full_name"`
+	FullName     string    `json:"name"`
 	Role         string    `json:"role"`
 	IsActive     bool      `json:"is_active"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+	DeletedAt    *time.Time `json:"deleted_at,omitempty"`
 	LastLogin    *time.Time `json:"last_login"`
 }
 
@@ -20,6 +21,7 @@ type UserRepository interface {
 	GetAll(role string, isActive *bool, offset, limit int) ([]*User, int, error)
 	Create(user *User) error
 	Update(user *User) error
+	SoftDelete(id string) error
 }
 
 type UserService interface {
@@ -27,4 +29,5 @@ type UserService interface {
 	GetAll(role string, isActive *bool, page, limit int) ([]*User, int, error)
 	Create(user *User) error
 	Update(user *User) error
+	SoftDelete(id string) error
 }

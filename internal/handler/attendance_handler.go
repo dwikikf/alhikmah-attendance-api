@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"alhikmah-attendance-api/internal/domain"
 
@@ -77,5 +78,34 @@ func (h *AttendanceHandler) GetClassAttendanceForToday(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    attendances,
+	})
+}
+
+func (h *AttendanceHandler) GetByClassAndDate(c *gin.Context) {
+	classID := c.Param("class_id")
+	dateStr := c.Param("date")
+
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format, expected YYYY-MM-DD"})
+		return
+	}
+
+	attendances, err := h.service.GetByClassAndDate(classID, date)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch attendance"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    attendances,
+	})
+}
+
+func (h *AttendanceHandler) Update(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Attendance updated (stub)",
 	})
 }

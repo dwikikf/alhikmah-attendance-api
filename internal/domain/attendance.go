@@ -28,6 +28,7 @@ type AttendanceAudit struct {
 type AttendanceRepository interface {
 	MarkAttendance(attendance *Attendance) error
 	UpdateAttendance(attendance *Attendance, audit *AttendanceAudit) error
+	GetByID(id string) (*Attendance, error)
 	GetByClassAndDate(classID string, date time.Time) ([]*Attendance, error)
 }
 
@@ -36,4 +37,5 @@ type AttendanceService interface {
 	ManualInput(classID string, studentIDs []string, status, notes, recordedBy string) error
 	UpdateManual(attendanceID, status, reason, changedBy string) error
 	GetClassAttendanceForToday(classID string) ([]*Attendance, error)
+	GetByClassAndDate(classID string, date time.Time) ([]*Attendance, error)
 }

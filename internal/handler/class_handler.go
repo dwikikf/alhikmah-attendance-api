@@ -56,10 +56,12 @@ func (h *ClassHandler) GetAll(c *gin.Context) {
 		"success": true,
 		"data":    classes,
 		"pagination": gin.H{
-			"page":        page,
-			"limit":       limit,
-			"total":       total,
-			"total_pages": totalPages,
+			"page":            page,
+			"pageSize":        limit,
+			"totalItems":      total,
+			"totalPages":      totalPages,
+			"hasNextPage":     page < totalPages,
+			"hasPreviousPage": page > 1,
 		},
 	})
 }
@@ -80,5 +82,97 @@ func (h *ClassHandler) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    class,
+	})
+}
+
+func (h *ClassHandler) Create(c *gin.Context) {
+	var req struct {
+		ClassName    string `json:"class_name" binding:"required"`
+		TeacherID    string `json:"teacher_id" binding:"required"`
+		AcademicYear string `json:"academic_year" binding:"required"`
+		Capacity     int    `json:"capacity"`
+		Description  string `json:"description"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	class := &domain.Class{
+		ClassName:    req.ClassName,
+		TeacherID:    req.TeacherID,
+		AcademicYear: req.AcademicYear,
+		Capacity:     req.Capacity,
+		Description:  req.Description,
+	}
+
+	if err := h.service.Create(class); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"data":    class,
+	})
+}
+
+func (h *ClassHandler) Update(c *gin.Context) {
+	id := c.Param("class_id")
+
+	var req struct {
+		ClassName   string `json:"class_name" binding:"required"`
+		TeacherID   string `json:"teacher_id" binding:"required"`
+		Capacity    int    `json:"capacity"`
+		Description string `json:"description"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	class := &domain.Class{
+		ID:          id,
+		ClassName:   req.ClassName,
+		TeacherID:   req.TeacherID,
+		Capacity:    req.Capacity,
+		Description: req.Description,
+	}
+
+	if err := h.service.Update(class); err != nil {
+		if err.Error() == "class not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Class not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Fetch updated class
+	updatedClass, err := h.service.GetByID(id)
+	if err != nil {
+		updatedClass = class
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    updatedClass,
+		"message": "Class updated successfully",
+	})
+}
+
+func (h *ClassHandler) Delete(c *gin.Context) {
+	id := c.Param("class_id")
+
+	if err := h.service.SoftDelete(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Class deleted successfully",
 	})
 }
