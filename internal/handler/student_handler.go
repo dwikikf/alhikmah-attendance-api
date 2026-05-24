@@ -71,8 +71,6 @@ func (h *StudentHandler) GetAll(c *gin.Context) {
 	classID := c.Query("class_id")
 	search := c.Query("search")
 	isActiveStr := c.Query("is_active")
-	classID := c.Query("class_id")
-	search := c.Query("search")
 	pageStr := c.Query("page")
 	limitStr := c.Query("limit")
 
