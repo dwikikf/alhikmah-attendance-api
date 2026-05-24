@@ -34,17 +34,17 @@ func (h *ClassHandler) GetAll(c *gin.Context) {
 	page, _ := strconv.Atoi(pageStr)
 	limit, _ := strconv.Atoi(limitStr)
 
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+
 	classes, total, err := h.service.GetAll(teacherID, academicYear, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch classes"})
 		return
-	}
-
-	if page == 0 {
-		page = 1
-	}
-	if limit == 0 {
-		limit = 20
 	}
 
 	totalPages := total / limit

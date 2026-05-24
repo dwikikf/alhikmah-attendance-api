@@ -53,7 +53,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials, Not Found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		return
 	}
 

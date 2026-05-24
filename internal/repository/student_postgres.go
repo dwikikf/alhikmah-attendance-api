@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 
 	"alhikmah-attendance-api/internal/domain"
 )
@@ -16,11 +17,11 @@ func NewStudentRepository(db *sql.DB) domain.StudentRepository {
 
 func (r *studentPostgres) Create(student *domain.Student) error {
 	query := `
-		INSERT INTO students (nisn, full_name, class_id, qr_code_data)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO students (nisn, full_name, class_id, gender, date_of_birth, qr_code_data)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, is_active, created_at, updated_at
 	`
-	return r.db.QueryRow(query, student.NISN, student.FullName, student.ClassID, student.QRCodeData).
+	return r.db.QueryRow(query, student.NISN, student.FullName, student.ClassID, student.Gender, student.DOB, student.QRCodeData).
 		Scan(&student.ID, &student.IsActive, &student.CreatedAt, &student.UpdatedAt)
 }
 
@@ -96,15 +97,27 @@ func (r *studentPostgres) GetByClassID(classID string) ([]*domain.Student, error
 	return students, nil
 }
 
-func (r *studentPostgres) GetAll(isActive *bool, page, limit int) ([]*domain.Student, int, error) {
+func (r *studentPostgres) GetAll(isActive *bool, classID, search string, page, limit int) ([]*domain.Student, int, error) {
 	offset := (page - 1) * limit
 	whereClause := "WHERE s.deleted_at IS NULL"
 	args := []interface{}{}
 	argId := 1
 
 	if isActive != nil {
-		whereClause += " AND s.is_active = $1"
+		whereClause += fmt.Sprintf(" AND s.is_active = $%d", argId)
 		args = append(args, *isActive)
+		argId++
+	}
+
+	if classID != "" {
+		whereClause += fmt.Sprintf(" AND s.class_id = $%d", argId)
+		args = append(args, classID)
+		argId++
+	}
+
+	if search != "" {
+		whereClause += fmt.Sprintf(" AND (s.full_name ILIKE $%d OR s.nisn ILIKE $%d)", argId, argId)
+		args = append(args, "%"+search+"%")
 		argId++
 	}
 
@@ -119,12 +132,7 @@ func (r *studentPostgres) GetAll(isActive *bool, page, limit int) ([]*domain.Stu
 		"FROM students s LEFT JOIN classes c ON s.class_id = c.id " + whereClause + " " +
 		"ORDER BY s.full_name ASC "
 
-	if argId == 1 {
-		query += "LIMIT $1 OFFSET $2"
-	} else {
-		query += "LIMIT $2 OFFSET $3"
-	}
-	
+	query += fmt.Sprintf("LIMIT $%d OFFSET $%d", argId, argId+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(query, args...)

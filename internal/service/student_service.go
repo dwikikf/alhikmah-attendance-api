@@ -40,8 +40,8 @@ func (s *studentService) GetByClassID(classID string) ([]*domain.Student, error)
 	return s.repo.GetByClassID(classID)
 }
 
-func (s *studentService) GetAll(isActive *bool, page, limit int) ([]*domain.Student, int, error) {
-	return s.repo.GetAll(isActive, page, limit)
+func (s *studentService) GetAll(isActive *bool, classID, search string, page, limit int) ([]*domain.Student, int, error) {
+	return s.repo.GetAll(isActive, classID, search, page, limit)
 }
 
 func (s *studentService) Update(student *domain.Student) error {

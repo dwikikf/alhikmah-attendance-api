@@ -54,17 +54,17 @@ func (h *UserHandler) GetAll(c *gin.Context) {
 	page, _ := strconv.Atoi(pageStr)
 	limit, _ := strconv.Atoi(limitStr)
 
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
 	users, total, err := h.service.GetAll(role, isActive, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
-	}
-
-	if page == 0 {
-		page = 1
-	}
-	if limit == 0 {
-		limit = 10
 	}
 
 	totalPages := total / limit
@@ -88,11 +88,11 @@ func (h *UserHandler) GetAll(c *gin.Context) {
 
 func (h *UserHandler) Create(c *gin.Context) {
 	var req struct {
-		Username string `json:"username" binding:"required"`
+		Username string `json:"username" binding:"required,min=3"`
 		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required"`
-		FullName string `json:"full_name" binding:"required"`
-		Role     string `json:"role" binding:"required"`
+		Password string `json:"password" binding:"required,min=6"`
+		FullName string `json:"full_name" binding:"required,min=3"`
+		Role     string `json:"role" binding:"required,oneof=admin teacher"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -109,7 +109,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.service.Create(user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleDBError(c, err)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.service.Update(user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleDBError(c, err)
 		return
 	}
 

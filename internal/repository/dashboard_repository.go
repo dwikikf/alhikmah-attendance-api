@@ -22,11 +22,11 @@ func (r *dashboardRepository) GetRecentActivity(limit int) ([]domain.RecentActiv
 			s.full_name, 
 			c.class_name, 
 			a.status, 
-			a.date 
+			a.attendance_date 
 		FROM attendances a
 		JOIN students s ON a.student_id = s.id
 		JOIN classes c ON s.class_id = c.id
-		ORDER BY a.updated_at DESC, a.created_at DESC
+		ORDER BY a.recorded_at DESC
 		LIMIT $1
 	`
 
@@ -51,15 +51,15 @@ func (r *dashboardRepository) GetRecentActivity(limit int) ([]domain.RecentActiv
 func (r *dashboardRepository) GetAttendanceTrend(startDate, endDate time.Time) ([]domain.AttendanceTrend, error) {
 	query := `
 		SELECT 
-			TO_CHAR(date, 'YYYY-MM-DD') as fmt_date,
+			TO_CHAR(attendance_date, 'YYYY-MM-DD') as fmt_date,
 			COUNT(CASE WHEN status = 'hadir' THEN 1 END) as hadir,
 			COUNT(CASE WHEN status = 'izin' THEN 1 END) as izin,
 			COUNT(CASE WHEN status = 'sakit' THEN 1 END) as sakit,
 			COUNT(CASE WHEN status = 'tanpa_keterangan' THEN 1 END) as tanpa_keterangan
 		FROM attendances
-		WHERE date >= $1 AND date <= $2
-		GROUP BY date
-		ORDER BY date ASC
+		WHERE attendance_date >= $1 AND attendance_date <= $2
+		GROUP BY attendance_date
+		ORDER BY attendance_date ASC
 	`
 
 	rows, err := r.db.Query(query, startDate, endDate)

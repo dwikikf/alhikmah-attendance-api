@@ -19,9 +19,11 @@ func NewStudentHandler(service domain.StudentService) *StudentHandler {
 
 func (h *StudentHandler) Create(c *gin.Context) {
 	var req struct {
-		NISN     string `json:"nisn" binding:"required"`
-		FullName string `json:"full_name" binding:"required"`
-		ClassID  string `json:"class_id" binding:"required"`
+		NISN     string  `json:"nisn" binding:"required,len=10"`
+		FullName string  `json:"full_name" binding:"required,min=3"`
+		ClassID  string  `json:"class_id" binding:"required,uuid"`
+		Gender   *string `json:"gender"`
+		DOB      *string `json:"date_of_birth"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -33,10 +35,12 @@ func (h *StudentHandler) Create(c *gin.Context) {
 		NISN:     req.NISN,
 		FullName: req.FullName,
 		ClassID:  req.ClassID,
+		Gender:   req.Gender,
+		DOB:      req.DOB,
 	}
 
 	if err := h.service.Create(student); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleDBError(c, err)
 		return
 	}
 
@@ -78,6 +82,8 @@ func (h *StudentHandler) GetByClass(c *gin.Context) {
 }
 
 func (h *StudentHandler) GetAll(c *gin.Context) {
+	classID := c.Query("class_id")
+	search := c.Query("search")
 	isActiveStr := c.Query("is_active")
 	pageStr := c.Query("page")
 	limitStr := c.Query("limit")
@@ -106,9 +112,9 @@ func (h *StudentHandler) GetAll(c *gin.Context) {
 		limit = 10
 	}
 
-	students, total, err := h.service.GetAll(isActive, page, limit)
+	students, total, err := h.service.GetAll(isActive, classID, search, page, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch students"})
+		handleDBError(c, err)
 		return
 	}
 
@@ -148,8 +154,8 @@ func (h *StudentHandler) Delete(c *gin.Context) {
 func (h *StudentHandler) Update(c *gin.Context) {
 	studentID := c.Param("student_id")
 	var req struct {
-		FullName string  `json:"full_name" binding:"required"`
-		ClassID  string  `json:"class_id" binding:"required"`
+		FullName string  `json:"full_name" binding:"required,min=3"`
+		ClassID  string  `json:"class_id" binding:"required,uuid"`
 		DOB      *string `json:"date_of_birth"`
 		Gender   *string `json:"gender"`
 		IsActive bool    `json:"is_active"`
@@ -170,7 +176,7 @@ func (h *StudentHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.service.Update(student); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleDBError(c, err)
 		return
 	}
 
