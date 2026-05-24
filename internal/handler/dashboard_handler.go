@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"alhikmah-attendance-api/internal/domain"
+	"alhikmah-attendance-api/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,14 +29,11 @@ func (h *DashboardHandler) GetRecentActivity(c *gin.Context) {
 
 	activities, err := h.service.GetRecentActivity(limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch recent activity"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to fetch recent activity"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    activities,
-	})
+	c.JSON(http.StatusOK, response.Success("Recent activity fetched successfully", activities))
 }
 
 func (h *DashboardHandler) GetAttendanceTrend(c *gin.Context) {
@@ -49,12 +47,9 @@ func (h *DashboardHandler) GetAttendanceTrend(c *gin.Context) {
 
 	trends, err := h.service.GetAttendanceTrend(days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch attendance trend"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to fetch attendance trend"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    trends,
-	})
+	c.JSON(http.StatusOK, response.Success("Attendance trend fetched successfully", trends))
 }

@@ -111,9 +111,9 @@ func main() {
 		{
 			// Users
 			protected.GET("/users/me", userHandler.GetMe)
-			protected.GET("/users", middleware.RoleMiddleware("admin", "principal"), userHandler.GetAll)
+			protected.GET("/users", middleware.RoleMiddleware("admin"), userHandler.GetAll)
 			protected.POST("/users", middleware.RoleMiddleware("admin"), userHandler.Create)
-			protected.PUT("/users/:user_id", userHandler.Update)
+			protected.PUT("/users/:user_id",middleware.RoleMiddleware("admin"), userHandler.Update)
 			protected.DELETE("/users/:user_id", middleware.RoleMiddleware("admin"), userHandler.Delete)
 
 			// Classes
@@ -124,11 +124,11 @@ func main() {
 			protected.DELETE("/classes/:class_id", middleware.RoleMiddleware("admin"), classHandler.Delete)
 
 			// Students
-			protected.GET("/students", middleware.RoleMiddleware("admin", "teacher", "principal"), studentHandler.GetAll)
+			protected.GET("/students", studentHandler.GetAll)
 			protected.GET("/students/:student_id", studentHandler.GetByID)
-			protected.POST("/students", middleware.RoleMiddleware("admin"), studentHandler.Create)
-			protected.PUT("/students/:student_id", middleware.RoleMiddleware("admin"), studentHandler.Update)
-			protected.DELETE("/students/:student_id", middleware.RoleMiddleware("admin"), studentHandler.Delete)
+			protected.POST("/students", studentHandler.Create)
+			protected.PUT("/students/:student_id", studentHandler.Update)
+			protected.DELETE("/students/:student_id", studentHandler.Delete)
 			protected.GET("/classes/:class_id/students", studentHandler.GetByClass)
 			protected.GET("/students/:student_id/qrcode", studentHandler.GetQRCode)
 

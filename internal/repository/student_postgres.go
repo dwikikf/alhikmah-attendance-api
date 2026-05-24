@@ -17,11 +17,11 @@ func NewStudentRepository(db *sql.DB) domain.StudentRepository {
 
 func (r *studentPostgres) Create(student *domain.Student) error {
 	query := `
-		INSERT INTO students (nisn, full_name, class_id, gender, date_of_birth, qr_code_data)
+		INSERT INTO students (nisn, full_name, class_id, date_of_birth, gender, qr_code_data)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, is_active, created_at, updated_at
 	`
-	return r.db.QueryRow(query, student.NISN, student.FullName, student.ClassID, student.Gender, student.DOB, student.QRCodeData).
+	return r.db.QueryRow(query, student.NISN, student.FullName, student.ClassID, student.DOB, student.Gender, student.QRCodeData).
 		Scan(&student.ID, &student.IsActive, &student.CreatedAt, &student.UpdatedAt)
 }
 

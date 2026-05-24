@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"alhikmah-attendance-api/internal/domain"
+	"alhikmah-attendance-api/internal/dto"
+	"alhikmah-attendance-api/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,20 +22,17 @@ func NewUserHandler(service domain.UserService) *UserHandler {
 func (h *UserHandler) GetMe(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		c.JSON(http.StatusUnauthorized, response.Error("User ID not found in context"))
 		return
 	}
 
 	user, err := h.service.GetByID(userID.(string))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to fetch user"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    user,
-	})
+	c.JSON(http.StatusOK, response.Success("User fetched successfully", user))
 }
 
 func (h *UserHandler) GetAll(c *gin.Context) {
@@ -63,7 +62,7 @@ func (h *UserHandler) GetAll(c *gin.Context) {
 
 	users, total, err := h.service.GetAll(role, isActive, page, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to fetch users"))
 		return
 	}
 
@@ -72,31 +71,21 @@ func (h *UserHandler) GetAll(c *gin.Context) {
 		totalPages++
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    users,
-		"pagination": gin.H{
-			"page":            page,
-			"pageSize":        limit,
-			"totalItems":      total,
-			"totalPages":      totalPages,
-			"hasNextPage":     page < totalPages,
-			"hasPreviousPage": page > 1,
-		},
-	})
+	c.JSON(http.StatusOK, response.SuccessWithPagination("Users fetched successfully", users, gin.H{
+		"page":            page,
+		"pageSize":        limit,
+		"totalItems":      total,
+		"totalPages":      totalPages,
+		"hasNextPage":     page < totalPages,
+		"hasPreviousPage": page > 1,
+	}))
 }
 
 func (h *UserHandler) Create(c *gin.Context) {
-	var req struct {
-		Username string `json:"username" binding:"required,min=3"`
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required,min=6"`
-		FullName string `json:"full_name" binding:"required,min=3"`
-		Role     string `json:"role" binding:"required,oneof=admin teacher"`
-	}
+	var req dto.CreateUserRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
 	}
 
@@ -113,23 +102,16 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    user,
-		"message": "User created successfully",
-	})
+	c.JSON(http.StatusCreated, response.Success("User created successfully", user))
 }
 
 func (h *UserHandler) Update(c *gin.Context) {
 	id := c.Param("user_id")
 
-	var req struct {
-		FullName string `json:"full_name" binding:"required"`
-		Email    string `json:"email" binding:"required,email"`
-	}
+	var req dto.UpdateUserRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
 	}
 
@@ -150,23 +132,16 @@ func (h *UserHandler) Update(c *gin.Context) {
 	// Fetch updated user to return complete data
 	updatedUser, _ := h.service.GetByID(id)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    updatedUser,
-		"message": "User updated successfully",
-	})
+	c.JSON(http.StatusOK, response.Success("User updated successfully", updatedUser))
 }
 
 func (h *UserHandler) Delete(c *gin.Context) {
 	id := c.Param("user_id")
 
 	if err := h.service.SoftDelete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "User deleted successfully",
-	})
+	c.JSON(http.StatusOK, response.Success("User deleted successfully", nil))
 }

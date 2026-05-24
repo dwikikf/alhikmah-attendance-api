@@ -37,7 +37,6 @@ func Error(message string) Response {
 	}
 }
 
-// Optionally, we can have a helper for Validation errors if needed.
 type ValidationErrorResponse struct {
 	Success bool        `json:"success"`
 	Message string      `json:"message"`

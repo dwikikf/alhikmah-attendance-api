@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"alhikmah-attendance-api/internal/domain"
+	"alhikmah-attendance-api/internal/dto"
+	"alhikmah-attendance-api/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,16 +20,10 @@ func NewStudentHandler(service domain.StudentService) *StudentHandler {
 }
 
 func (h *StudentHandler) Create(c *gin.Context) {
-	var req struct {
-		NISN     string  `json:"nisn" binding:"required,len=10"`
-		FullName string  `json:"full_name" binding:"required,min=3"`
-		ClassID  string  `json:"class_id" binding:"required,uuid"`
-		Gender   *string `json:"gender"`
-		DOB      *string `json:"date_of_birth"`
-	}
+	var req dto.CreateStudentRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
 	}
 
@@ -44,11 +40,7 @@ func (h *StudentHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    student,
-		"message": "Student created successfully",
-	})
+	c.JSON(http.StatusCreated, response.Success("Student created successfully", student))
 }
 
 func (h *StudentHandler) GetByID(c *gin.Context) {
@@ -56,14 +48,11 @@ func (h *StudentHandler) GetByID(c *gin.Context) {
 
 	student, err := h.service.GetByID(studentID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Student not found"})
+		c.JSON(http.StatusNotFound, response.Error("Student not found"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    student,
-	})
+	c.JSON(http.StatusOK, response.Success("Student fetched successfully", student))
 }
 
 func (h *StudentHandler) GetByClass(c *gin.Context) {
@@ -71,20 +60,19 @@ func (h *StudentHandler) GetByClass(c *gin.Context) {
 
 	students, err := h.service.GetByClassID(classID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch students"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to fetch students"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    students,
-	})
+	c.JSON(http.StatusOK, response.Success("Students fetched successfully", students))
 }
 
 func (h *StudentHandler) GetAll(c *gin.Context) {
 	classID := c.Query("class_id")
 	search := c.Query("search")
 	isActiveStr := c.Query("is_active")
+	classID := c.Query("class_id")
+	search := c.Query("search")
 	pageStr := c.Query("page")
 	limitStr := c.Query("limit")
 
@@ -123,46 +111,33 @@ func (h *StudentHandler) GetAll(c *gin.Context) {
 		totalPages++
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    students,
-		"pagination": gin.H{
-			"page":            page,
-			"pageSize":        limit,
-			"totalItems":      total,
-			"totalPages":      totalPages,
-			"hasNextPage":     page < totalPages,
-			"hasPreviousPage": page > 1,
-		},
-	})
+	c.JSON(http.StatusOK, response.SuccessWithPagination("Students fetched successfully", students, gin.H{
+		"page":            page,
+		"pageSize":        limit,
+		"totalItems":      total,
+		"totalPages":      totalPages,
+		"hasNextPage":     page < totalPages,
+		"hasPreviousPage": page > 1,
+	}))
 }
 
 func (h *StudentHandler) Delete(c *gin.Context) {
 	id := c.Param("student_id")
 
 	if err := h.service.SoftDelete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Student deleted successfully",
-	})
+	c.JSON(http.StatusOK, response.Success("Student deleted successfully", nil))
 }
 
 func (h *StudentHandler) Update(c *gin.Context) {
 	studentID := c.Param("student_id")
-	var req struct {
-		FullName string  `json:"full_name" binding:"required,min=3"`
-		ClassID  string  `json:"class_id" binding:"required,uuid"`
-		DOB      *string `json:"date_of_birth"`
-		Gender   *string `json:"gender"`
-		IsActive bool    `json:"is_active"`
-	}
+	var req dto.UpdateStudentRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
 	}
 
@@ -180,15 +155,9 @@ func (h *StudentHandler) Update(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Student updated successfully",
-	})
+	c.JSON(http.StatusOK, response.Success("Student updated successfully", nil))
 }
 
 func (h *StudentHandler) GetQRCode(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Student QR Code generated (stub)",
-	})
+	c.JSON(http.StatusOK, response.Success("Student QR Code generated (stub)", nil))
 }
