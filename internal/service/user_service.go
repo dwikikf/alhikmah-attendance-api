@@ -36,7 +36,7 @@ func (s *userService) Create(user *domain.User) error {
 		return errors.New("missing required fields")
 	}
 
-	if user.Role != "admin" && user.Role != "guru" {
+	if user.Role != "admin" && user.Role != "teacher" {
 		return errors.New("invalid role")
 	}
 

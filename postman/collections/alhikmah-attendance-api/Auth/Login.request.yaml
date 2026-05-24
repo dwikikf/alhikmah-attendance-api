@@ -11,8 +11,8 @@ body:
   type: json
   content: |-
     {
-      "username": "super_admin",
-      "password": "super_admin"
+      "username": "superadmin",
+      "password": "superadmin"
     }
 scripts:
   - type: afterResponse

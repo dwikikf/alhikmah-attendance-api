@@ -69,6 +69,8 @@ func (h *StudentHandler) GetByClass(c *gin.Context) {
 
 func (h *StudentHandler) GetAll(c *gin.Context) {
 	isActiveStr := c.Query("is_active")
+	classID := c.Query("class_id")
+	search := c.Query("search")
 	pageStr := c.Query("page")
 	limitStr := c.Query("limit")
 
@@ -96,7 +98,7 @@ func (h *StudentHandler) GetAll(c *gin.Context) {
 		limit = 10
 	}
 
-	students, total, err := h.service.GetAll(isActive, page, limit)
+	students, total, err := h.service.GetAll(isActive, classID, search, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch students"})
 		return

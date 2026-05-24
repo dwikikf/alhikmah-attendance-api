@@ -9,6 +9,6 @@ type CreateUserRequest struct {
 }
 
 type UpdateUserRequest struct {
-	FullName string `json:"full_name" binding:"required"`
+	FullName string `json:"full_name" binding:"required,min=3"`
 	Email    string `json:"email" binding:"required,email"`
 }

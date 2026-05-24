@@ -27,7 +27,7 @@ type StudentRepository interface {
 	GetByID(id string) (*Student, error)
 	GetByClassID(classID string) ([]*Student, error)
 	GetByNISN(nisn string) (*Student, error)
-	GetAll(isActive *bool, page, limit int) ([]*Student, int, error)
+	GetAll(isActive *bool, classID, search string, page, limit int) ([]*Student, int, error)
 	Update(student *Student) error
 	SoftDelete(id string) error
 }
@@ -36,7 +36,7 @@ type StudentService interface {
 	Create(student *Student) error
 	GetByID(id string) (*Student, error)
 	GetByClassID(classID string) ([]*Student, error)
-	GetAll(isActive *bool, page, limit int) ([]*Student, int, error)
+	GetAll(isActive *bool, classID, search string, page, limit int) ([]*Student, int, error)
 	GenerateQRCodeData(nisn, fullName, classID string) string
 	Update(student *Student) error
 	SoftDelete(id string) error

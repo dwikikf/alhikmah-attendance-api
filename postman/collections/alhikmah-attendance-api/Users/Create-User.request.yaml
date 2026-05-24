@@ -9,9 +9,9 @@ body:
   type: json
   content: |-
     {
-      "username": "super_admin",
-      "email": "super_admin@alhikmah.sch.id",
-      "password": "super_admin",
+      "username": "dwikikf",
+      "email": "dwikikf@alhikmah.sch.id",
+      "password": "password123",
       "full_name": "Dwiki Kautsar Fahmi",
-      "role": "admin"
+      "role": "teacher"
     }

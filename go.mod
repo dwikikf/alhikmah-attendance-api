@@ -3,11 +3,12 @@ module alhikmah-attendance-api
 go 1.26.3
 
 require (
+	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
+	github.com/go-faker/faker/v4 v4.7.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
-	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.12.3
 	github.com/spf13/viper v1.21.0
 	golang.org/x/crypto v0.51.0

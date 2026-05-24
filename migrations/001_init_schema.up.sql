@@ -1,4 +1,4 @@
-CREATE TYPE user_role AS ENUM ('admin', 'guru');
+CREATE TYPE user_role AS ENUM ('admin', 'teacher');
 CREATE TYPE gender_type AS ENUM ('laki-laki', 'perempuan');
 CREATE TYPE attendance_status AS ENUM ('hadir', 'izin', 'sakit', 'tanpa_keterangan');
 CREATE TYPE report_type_enum AS ENUM ('harian', 'mingguan', 'bulanan', 'semesteran');
@@ -9,15 +9,17 @@ CREATE TABLE users (
   email VARCHAR(100) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   full_name VARCHAR(150) NOT NULL,
-  role user_role DEFAULT 'guru',
+  role user_role DEFAULT 'teacher',
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL DEFAULT NULL,
   last_login TIMESTAMP
 );
 
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_deleted_at ON users(deleted_at);
 
 CREATE TABLE classes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -28,11 +30,13 @@ CREATE TABLE classes (
   description TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL DEFAULT NULL,
   UNIQUE(class_name, academic_year)
 );
 
 CREATE INDEX idx_classes_teacher_id ON classes(teacher_id);
 CREATE INDEX idx_classes_academic_year ON classes(academic_year);
+CREATE INDEX idx_classes_deleted_at ON classes(deleted_at);
 
 CREATE TABLE students (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -46,12 +50,14 @@ CREATE TABLE students (
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL DEFAULT NULL,
   UNIQUE(nisn, class_id)
 );
 
 CREATE INDEX idx_students_nisn ON students(nisn);
 CREATE INDEX idx_students_class_id ON students(class_id);
 CREATE INDEX idx_students_is_active ON students(is_active);
+CREATE INDEX idx_students_deleted_at ON students(deleted_at);
 
 CREATE TABLE attendances (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
