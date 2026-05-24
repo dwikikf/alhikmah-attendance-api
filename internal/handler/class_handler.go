@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"alhikmah-attendance-api/internal/domain"
+	"alhikmah-attendance-api/internal/dto"
+	"alhikmah-attendance-api/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,7 +38,7 @@ func (h *ClassHandler) GetAll(c *gin.Context) {
 
 	classes, total, err := h.service.GetAll(teacherID, academicYear, page, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch classes"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to fetch classes"))
 		return
 	}
 
@@ -52,18 +54,14 @@ func (h *ClassHandler) GetAll(c *gin.Context) {
 		totalPages++
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    classes,
-		"pagination": gin.H{
-			"page":            page,
-			"pageSize":        limit,
-			"totalItems":      total,
-			"totalPages":      totalPages,
-			"hasNextPage":     page < totalPages,
-			"hasPreviousPage": page > 1,
-		},
-	})
+	c.JSON(http.StatusOK, response.SuccessWithPagination("Classes fetched successfully", classes, gin.H{
+		"page":            page,
+		"pageSize":        limit,
+		"totalItems":      total,
+		"totalPages":      totalPages,
+		"hasNextPage":     page < totalPages,
+		"hasPreviousPage": page > 1,
+	}))
 }
 
 func (h *ClassHandler) GetByID(c *gin.Context) {
@@ -71,7 +69,7 @@ func (h *ClassHandler) GetByID(c *gin.Context) {
 
 	class, err := h.service.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch class"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to fetch class"))
 		return
 	}
 
@@ -79,23 +77,14 @@ func (h *ClassHandler) GetByID(c *gin.Context) {
 	// Since we are building iteratively, we will just return the class for now.
 	// We'll update this in Phase 3.
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    class,
-	})
+	c.JSON(http.StatusOK, response.Success("Class fetched successfully", class))
 }
 
 func (h *ClassHandler) Create(c *gin.Context) {
-	var req struct {
-		ClassName    string `json:"class_name" binding:"required"`
-		TeacherID    string `json:"teacher_id" binding:"required"`
-		AcademicYear string `json:"academic_year" binding:"required"`
-		Capacity     int    `json:"capacity"`
-		Description  string `json:"description"`
-	}
+	var req dto.CreateClassRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
 	}
 
@@ -108,28 +97,20 @@ func (h *ClassHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.service.Create(class); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleDBError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    class,
-	})
+	c.JSON(http.StatusCreated, response.Success("Class created successfully", class))
 }
 
 func (h *ClassHandler) Update(c *gin.Context) {
 	id := c.Param("class_id")
 
-	var req struct {
-		ClassName   string `json:"class_name" binding:"required"`
-		TeacherID   string `json:"teacher_id" binding:"required"`
-		Capacity    int    `json:"capacity"`
-		Description string `json:"description"`
-	}
+	var req dto.UpdateClassRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
 	}
 
@@ -143,10 +124,10 @@ func (h *ClassHandler) Update(c *gin.Context) {
 
 	if err := h.service.Update(class); err != nil {
 		if err.Error() == "class not found" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Class not found"})
+			c.JSON(http.StatusNotFound, response.Error("Class not found"))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleDBError(c, err)
 		return
 	}
 
@@ -156,23 +137,16 @@ func (h *ClassHandler) Update(c *gin.Context) {
 		updatedClass = class
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    updatedClass,
-		"message": "Class updated successfully",
-	})
+	c.JSON(http.StatusOK, response.Success("Class updated successfully", updatedClass))
 }
 
 func (h *ClassHandler) Delete(c *gin.Context) {
 	id := c.Param("class_id")
 
 	if err := h.service.SoftDelete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Class deleted successfully",
-	})
+	c.JSON(http.StatusOK, response.Success("Class deleted successfully", nil))
 }

@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"alhikmah-attendance-api/config"
+	"alhikmah-attendance-api/internal/dto"
 	"alhikmah-attendance-api/pkg/jwt"
+	"alhikmah-attendance-api/pkg/response"
 	"alhikmah-attendance-api/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -17,19 +19,12 @@ type AuthHandler struct {
 	Config config.Config
 }
 
-type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
-
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
+// DTOs moved to internal/dto
 
 func (h *AuthHandler) Login(c *gin.Context) {
-	var req LoginRequest
+	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		c.JSON(http.StatusBadRequest, response.Error("Invalid request body: "+err.Error()))
 		return
 	}
 
@@ -50,15 +45,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials, Not Found"})
+			c.JSON(http.StatusUnauthorized, response.Error("Invalid credentials, Not Found"))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		c.JSON(http.StatusInternalServerError, response.Error("Internal server error"))
 		return
 	}
 
 	if !utils.CheckPasswordHash(req.Password, hash) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials, hash mismatch"})
+		c.JSON(http.StatusUnauthorized, response.Error("Invalid credentials, hash mismatch"))
 		return
 	}
 
@@ -67,88 +62,68 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	token, err := jwt.GenerateToken(id, email, fullName, role, h.Config.JWTSecret, 24*time.Hour)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to generate token"))
 		return
 	}
 
 	refreshToken, err := jwt.GenerateToken(id, email, fullName, role, h.Config.JWTRefreshSecret, 7*24*time.Hour)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to generate refresh token"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"token":         token,
-			"refresh_token": refreshToken,
-			"user": gin.H{
-				"id":        id,
-				"username":  username,
-				"name":      fullName,
-				"email":     email,
-				"role":      role,
-			},
+	c.JSON(http.StatusOK, response.Success("Login successful", gin.H{
+		"token":         token,
+		"refresh_token": refreshToken,
+		"user": gin.H{
+			"id":       id,
+			"username": username,
+			"name":     fullName,
+			"email":    email,
+			"role":     role,
 		},
-		"message": "Login successful",
-	})
+	}))
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	var req RefreshRequest
+	var req dto.RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		c.JSON(http.StatusBadRequest, response.Error("Invalid request body: "+err.Error()))
 		return
 	}
 
 	claims, err := jwt.ValidateToken(req.RefreshToken, h.Config.JWTRefreshSecret)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+		c.JSON(http.StatusUnauthorized, response.Error("Invalid refresh token"))
 		return
 	}
 
 	// Generate new access token
 	newToken, err := jwt.GenerateToken(claims.Sub, claims.Email, claims.Name, claims.Role, h.Config.JWTSecret, 24*time.Hour)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate new token"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to generate new token"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"token": newToken,
-		},
-		"message": "Token refreshed successfully",
-	})
+	c.JSON(http.StatusOK, response.Success("Token refreshed successfully", gin.H{
+		"token": newToken,
+	}))
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
 	// For JWT, logout is typically handled client-side by destroying the token.
 	// You could implement a token blacklist here if needed.
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Logout successful",
-	})
+	c.JSON(http.StatusOK, response.Success("Logout successful", nil))
 }
 
 func (h *AuthHandler) ResetPasswordRequest(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Password reset requested (stub)",
-	})
+	c.JSON(http.StatusOK, response.Success("Password reset requested (stub)", nil))
 }
 
 func (h *AuthHandler) ResetPasswordConfirm(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Password reset confirmed (stub)",
-	})
+	c.JSON(http.StatusOK, response.Success("Password reset confirmed (stub)", nil))
 }
 
 func (h *AuthHandler) ResetPasswordChange(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Password changed successfully (stub)",
-	})
+	c.JSON(http.StatusOK, response.Success("Password changed successfully (stub)", nil))
 }

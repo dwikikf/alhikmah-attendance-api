@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"alhikmah-attendance-api/internal/domain"
+	"alhikmah-attendance-api/internal/dto"
+	"alhikmah-attendance-api/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,52 +20,39 @@ func NewAttendanceHandler(service domain.AttendanceService) *AttendanceHandler {
 }
 
 func (h *AttendanceHandler) ScanQR(c *gin.Context) {
-	var req struct {
-		QRCodeData string `json:"qr_code_data" binding:"required"`
-	}
+	var req dto.ScanQRRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
 	}
 
 	userID, _ := c.Get("userID")
 
 	if err := h.service.ScanQR(req.QRCodeData, userID.(string)); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Attendance recorded successfully",
-	})
+	c.JSON(http.StatusOK, response.Success("Attendance recorded successfully", nil))
 }
 
 func (h *AttendanceHandler) ManualInput(c *gin.Context) {
-	var req struct {
-		ClassID    string   `json:"class_id" binding:"required"`
-		StudentIDs []string `json:"student_ids" binding:"required"`
-		Status     string   `json:"status" binding:"required"`
-		Notes      string   `json:"notes"`
-	}
+	var req dto.ManualAttendanceRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
 	}
 
 	userID, _ := c.Get("userID")
 
 	if err := h.service.ManualInput(req.ClassID, req.StudentIDs, req.Status, req.Notes, userID.(string)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Manual attendance recorded successfully",
-	})
+	c.JSON(http.StatusOK, response.Success("Manual attendance recorded successfully", nil))
 }
 
 func (h *AttendanceHandler) GetClassAttendanceForToday(c *gin.Context) {
@@ -71,14 +60,11 @@ func (h *AttendanceHandler) GetClassAttendanceForToday(c *gin.Context) {
 
 	attendances, err := h.service.GetClassAttendanceForToday(classID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch attendance"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to fetch attendance"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    attendances,
-	})
+	c.JSON(http.StatusOK, response.Success("Attendance fetched successfully", attendances))
 }
 
 func (h *AttendanceHandler) GetByClassAndDate(c *gin.Context) {
@@ -87,25 +73,19 @@ func (h *AttendanceHandler) GetByClassAndDate(c *gin.Context) {
 
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format, expected YYYY-MM-DD"})
+		c.JSON(http.StatusBadRequest, response.Error("Invalid date format, expected YYYY-MM-DD"))
 		return
 	}
 
 	attendances, err := h.service.GetByClassAndDate(classID, date)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch attendance"})
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to fetch attendance"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    attendances,
-	})
+	c.JSON(http.StatusOK, response.Success("Attendance fetched successfully", attendances))
 }
 
 func (h *AttendanceHandler) Update(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Attendance updated (stub)",
-	})
+	c.JSON(http.StatusOK, response.Success("Attendance updated (stub)", nil))
 }
