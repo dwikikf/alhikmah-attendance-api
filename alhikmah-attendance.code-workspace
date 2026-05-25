@@ -1,10 +1,13 @@
 {
   "folders": [
-	{
-		"path": "."
-	},
-	{
-		"path": "../alhikmah-attendance-web"
-	}
-]
+    {
+      "path": ".",
+    },
+    {
+      "path": "../alhikmah-attendance-web",
+    },
+    {
+      "path": "../alhikmah-attendance-mobile",
+    },
+  ],
 }
