@@ -60,7 +60,7 @@ func main() {
 	}
 	userHandler := handler.NewUserHandler(userService)
 	classHandler := handler.NewClassHandler(classService)
-	studentHandler := handler.NewStudentHandler(studentService)
+	studentHandler := handler.NewStudentHandler(studentService, classService)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 	reportHandler := handler.NewReportHandler(reportService)
 	dashboardHandler := handler.NewDashboardHandler(dashboardService)
@@ -119,9 +119,9 @@ func main() {
 			// Classes
 			protected.GET("/classes", classHandler.GetAll)
 			protected.GET("/classes/:class_id", classHandler.GetByID)
-			protected.POST("/classes", middleware.RoleMiddleware("admin"), classHandler.Create)
-			protected.PUT("/classes/:class_id", middleware.RoleMiddleware("admin"), classHandler.Update)
-			protected.DELETE("/classes/:class_id", middleware.RoleMiddleware("admin"), classHandler.Delete)
+			protected.POST("/classes", middleware.RoleMiddleware("admin", "teacher"), classHandler.Create)
+			protected.PUT("/classes/:class_id", middleware.RoleMiddleware("admin", "teacher"), classHandler.Update)
+			protected.DELETE("/classes/:class_id", middleware.RoleMiddleware("admin", "teacher"), classHandler.Delete)
 
 			// Students
 			protected.GET("/students", studentHandler.GetAll)

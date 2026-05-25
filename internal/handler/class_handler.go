@@ -25,7 +25,7 @@ func (h *ClassHandler) GetAll(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	
 	teacherID := ""
-	if role == "guru" {
+	if role == "teacher" {
 		teacherID = userID.(string)
 	}
 
@@ -88,6 +88,12 @@ func (h *ClassHandler) Create(c *gin.Context) {
 		return
 	}
 
+	role, _ := c.Get("role")
+	if role == "teacher" {
+		userID, _ := c.Get("userID")
+		req.TeacherID = userID.(string)
+	}
+
 	class := &domain.Class{
 		ClassName:    req.ClassName,
 		TeacherID:    req.TeacherID,
@@ -106,6 +112,20 @@ func (h *ClassHandler) Create(c *gin.Context) {
 
 func (h *ClassHandler) Update(c *gin.Context) {
 	id := c.Param("class_id")
+
+	role, _ := c.Get("role")
+	if role == "teacher" {
+		userID, _ := c.Get("userID")
+		class, err := h.service.GetByID(id)
+		if err != nil {
+			c.JSON(http.StatusNotFound, response.Error("Class not found"))
+			return
+		}
+		if class.TeacherID != userID.(string) {
+			c.JSON(http.StatusForbidden, response.Error("You are not authorized to modify this class"))
+			return
+		}
+	}
 
 	var req dto.UpdateClassRequest
 
@@ -142,6 +162,20 @@ func (h *ClassHandler) Update(c *gin.Context) {
 
 func (h *ClassHandler) Delete(c *gin.Context) {
 	id := c.Param("class_id")
+
+	role, _ := c.Get("role")
+	if role == "teacher" {
+		userID, _ := c.Get("userID")
+		class, err := h.service.GetByID(id)
+		if err != nil {
+			c.JSON(http.StatusNotFound, response.Error("Class not found"))
+			return
+		}
+		if class.TeacherID != userID.(string) {
+			c.JSON(http.StatusForbidden, response.Error("You are not authorized to delete this class"))
+			return
+		}
+	}
 
 	if err := h.service.SoftDelete(id); err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))

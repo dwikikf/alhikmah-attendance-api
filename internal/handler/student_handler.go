@@ -12,11 +12,12 @@ import (
 )
 
 type StudentHandler struct {
-	service domain.StudentService
+	service      domain.StudentService
+	classService domain.ClassService
 }
 
-func NewStudentHandler(service domain.StudentService) *StudentHandler {
-	return &StudentHandler{service: service}
+func NewStudentHandler(service domain.StudentService, classService domain.ClassService) *StudentHandler {
+	return &StudentHandler{service: service, classService: classService}
 }
 
 func (h *StudentHandler) Create(c *gin.Context) {
@@ -25,6 +26,16 @@ func (h *StudentHandler) Create(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
+	}
+
+	role, _ := c.Get("role")
+	if role == "teacher" {
+		userID, _ := c.Get("userID")
+		class, err := h.classService.GetByID(req.ClassID)
+		if err != nil || class.TeacherID != userID.(string) {
+			c.JSON(http.StatusForbidden, response.Error("You are not authorized to add students to this class"))
+			return
+		}
 	}
 
 	student := &domain.Student{
@@ -98,7 +109,14 @@ func (h *StudentHandler) GetAll(c *gin.Context) {
 		limit = 10
 	}
 
-	students, total, err := h.service.GetAll(isActive, classID, search, page, limit)
+	role, _ := c.Get("role")
+	userID, _ := c.Get("userID")
+	teacherID := ""
+	if role == "teacher" {
+		teacherID = userID.(string)
+	}
+
+	students, total, err := h.service.GetAll(teacherID, isActive, classID, search, page, limit)
 	if err != nil {
 		handleDBError(c, err)
 		return
@@ -122,6 +140,21 @@ func (h *StudentHandler) GetAll(c *gin.Context) {
 func (h *StudentHandler) Delete(c *gin.Context) {
 	id := c.Param("student_id")
 
+	role, _ := c.Get("role")
+	if role == "teacher" {
+		userID, _ := c.Get("userID")
+		studentToDelete, err := h.service.GetByID(id)
+		if err != nil {
+			c.JSON(http.StatusNotFound, response.Error("Student not found"))
+			return
+		}
+		class, err := h.classService.GetByID(studentToDelete.ClassID)
+		if err != nil || class.TeacherID != userID.(string) {
+			c.JSON(http.StatusForbidden, response.Error("You are not authorized to delete this student"))
+			return
+		}
+	}
+
 	if err := h.service.SoftDelete(id); err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
@@ -137,6 +170,32 @@ func (h *StudentHandler) Update(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
+	}
+
+	role, _ := c.Get("role")
+	if role == "teacher" {
+		userID, _ := c.Get("userID")
+		
+		// Check target class ownership
+		if req.ClassID != "" {
+			class, err := h.classService.GetByID(req.ClassID)
+			if err != nil || class.TeacherID != userID.(string) {
+				c.JSON(http.StatusForbidden, response.Error("You are not authorized to move student to this class"))
+				return
+			}
+		}
+
+		// Check current student class ownership
+		studentToUpdate, err := h.service.GetByID(studentID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, response.Error("Student not found"))
+			return
+		}
+		oldClass, err := h.classService.GetByID(studentToUpdate.ClassID)
+		if err != nil || oldClass.TeacherID != userID.(string) {
+			c.JSON(http.StatusForbidden, response.Error("You are not authorized to modify this student"))
+			return
+		}
 	}
 
 	student := &domain.Student{

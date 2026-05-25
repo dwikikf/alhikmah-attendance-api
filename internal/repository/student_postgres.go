@@ -97,7 +97,7 @@ func (r *studentPostgres) GetByClassID(classID string) ([]*domain.Student, error
 	return students, nil
 }
 
-func (r *studentPostgres) GetAll(isActive *bool, classID, search string, page, limit int) ([]*domain.Student, int, error) {
+func (r *studentPostgres) GetAll(teacherID string, isActive *bool, classID, search string, page, limit int) ([]*domain.Student, int, error) {
 	offset := (page - 1) * limit
 	whereClause := "WHERE s.deleted_at IS NULL"
 	args := []interface{}{}
@@ -121,7 +121,17 @@ func (r *studentPostgres) GetAll(isActive *bool, classID, search string, page, l
 		argId++
 	}
 
-	countQuery := "SELECT COUNT(*) FROM students s " + whereClause
+	if teacherID != "" {
+		whereClause += fmt.Sprintf(" AND c.teacher_id = $%d", argId)
+		args = append(args, teacherID)
+		argId++
+	}
+
+	countQuery := "SELECT COUNT(*) FROM students s "
+	if teacherID != "" {
+		countQuery += "LEFT JOIN classes c ON s.class_id = c.id "
+	}
+	countQuery += whereClause
 	var total int
 	err := r.db.QueryRow(countQuery, args...).Scan(&total)
 	if err != nil {
