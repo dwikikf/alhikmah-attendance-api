@@ -280,3 +280,54 @@ func (s *reportService) GetSemesterReport(classID, academicYear string, semester
 
 	return report, nil
 }
+
+func (s *reportService) GetStudentReport(studentID, startDate, endDate string) (*domain.StudentReport, error) {
+	_, err := time.Parse("2006-01-02", startDate)
+	if err != nil {
+		return nil, errors.New("invalid start date format")
+	}
+	_, err = time.Parse("2006-01-02", endDate)
+	if err != nil {
+		return nil, errors.New("invalid end date format")
+	}
+
+	records, err := s.reportRepo.GetStudentReportRaw(studentID, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	summary := domain.StudentSummary{}
+	var studentName, nisn, className string
+
+	for _, r := range records {
+		if studentName == "" {
+			studentName = r.StudentName
+			nisn = r.NISN
+			className = r.ClassName
+		}
+		switch r.Status {
+		case "hadir":
+			summary.Hadir++
+		case "izin":
+			summary.Izin++
+		case "sakit":
+			summary.Sakit++
+		case "tanpa_keterangan":
+			summary.TanpaKeterangan++
+		}
+	}
+
+	total := summary.Hadir + summary.Izin + summary.Sakit + summary.TanpaKeterangan
+	if total > 0 {
+		summary.HadirPercentage = float64(summary.Hadir) / float64(total) * 100
+	}
+
+	return &domain.StudentReport{
+		StudentID:   studentID,
+		StudentName: studentName,
+		NISN:        nisn,
+		ClassName:   className,
+		Summary:     summary,
+		Records:     records,
+	}, nil
+}

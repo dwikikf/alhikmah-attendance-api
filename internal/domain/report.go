@@ -83,6 +83,40 @@ type SemesterReport struct {
 }
 
 // Internal structs for repository
+type StudentSummary struct {
+	Hadir           int     `json:"hadir"`
+	Izin            int     `json:"izin"`
+	Sakit           int     `json:"sakit"`
+	TanpaKeterangan int     `json:"tanpa_keterangan"`
+	HadirPercentage float64 `json:"hadir_percentage"`
+}
+
+type StudentReportRecord struct {
+	ID             string  `json:"id"`
+	StudentID      string  `json:"student_id"`
+	StudentName    string  `json:"student_name"`
+	NISN           string  `json:"nisn"`
+	ClassID        string  `json:"class_id"`
+	ClassName      string  `json:"class_name"`
+	AttendanceDate string  `json:"attendance_date"`
+	Status         string  `json:"status"`
+	RecordedBy     string  `json:"recorded_by"`
+	RecordedAt     string  `json:"recorded_at"`
+	ScannedAt      *string `json:"scanned_at"`
+	Notes          *string `json:"notes"`
+	IsManual       bool    `json:"is_manual"`
+}
+
+type StudentReport struct {
+	StudentID   string                `json:"student_id"`
+	StudentName string                `json:"student_name"`
+	NISN        string                `json:"nisn"`
+	ClassName   string                `json:"class_name"`
+	Summary     StudentSummary        `json:"summary"`
+	Records     []StudentReportRecord `json:"records"`
+}
+
+// Raw Internal structs for repository
 type DailyRecordRaw struct {
 	NISN        string
 	StudentName string
@@ -111,6 +145,7 @@ type ReportRepository interface {
 	GetDailyReportRaw(classID, dateStr string) ([]DailyRecordRaw, error)
 	GetAggregatedReportRaw(classID, startDate, endDate string) ([]MonthlyStatRaw, int, error)
 	GetTrendRaw(classID, startDate, endDate string) ([]TrendRaw, error)
+	GetStudentReportRaw(studentID, startDate, endDate string) ([]StudentReportRecord, error)
 }
 
 type ReportCacheRepository interface {
@@ -123,4 +158,5 @@ type ReportService interface {
 	GetDailyReport(classID, dateStr string) (*DailyReport, error)
 	GetMonthlyReport(classID, monthStr string) (*MonthlyReport, error)
 	GetSemesterReport(classID, academicYear string, semester int) (*SemesterReport, error)
+	GetStudentReport(studentID, startDate, endDate string) (*StudentReport, error)
 }

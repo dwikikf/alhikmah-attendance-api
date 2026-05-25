@@ -128,3 +128,69 @@ func (r *reportPostgres) GetTrendRaw(classID, startDate, endDate string) ([]doma
 	}
 	return trends, nil
 }
+func (r *reportPostgres) GetStudentReportRaw(studentID, startDate, endDate string) ([]domain.StudentReportRecord, error) {
+	query := `
+		SELECT 
+			a.id, 
+			s.id as student_id, 
+			s.full_name as student_name, 
+			s.nisn, 
+			c.id as class_id, 
+			c.class_name, 
+			TO_CHAR(a.attendance_date, 'YYYY-MM-DD') as attendance_date, 
+			a.status, 
+			a.recorded_by, 
+			TO_CHAR(a.recorded_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as recorded_at, 
+			a.scanned_at, 
+			a.notes, 
+			a.is_manual
+		FROM attendances a
+		JOIN students s ON a.student_id = s.id
+		JOIN classes c ON a.class_id = c.id
+		WHERE a.student_id = $1 AND a.attendance_date >= $2 AND a.attendance_date <= $3
+		ORDER BY a.attendance_date DESC
+	`
+	rows, err := r.db.Query(query, studentID, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []domain.StudentReportRecord
+	for rows.Next() {
+		var item domain.StudentReportRecord
+		var scannedAt sql.NullTime
+		var notes sql.NullString
+		
+		if err := rows.Scan(
+			&item.ID,
+			&item.StudentID,
+			&item.StudentName,
+			&item.NISN,
+			&item.ClassID,
+			&item.ClassName,
+			&item.AttendanceDate,
+			&item.Status,
+			&item.RecordedBy,
+			&item.RecordedAt,
+			&scannedAt,
+			&notes,
+			&item.IsManual,
+		); err != nil {
+			return nil, err
+		}
+
+		if scannedAt.Valid {
+			t := scannedAt.Time.Format(time.RFC3339)
+			item.ScannedAt = &t
+		}
+		if notes.Valid {
+			n := notes.String
+			item.Notes = &n
+		}
+
+		records = append(records, item)
+	}
+
+	return records, nil
+}

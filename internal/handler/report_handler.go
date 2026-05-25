@@ -80,7 +80,22 @@ func (h *ReportHandler) GetSemesterReport(c *gin.Context) {
 }
 
 func (h *ReportHandler) GetStudentReport(c *gin.Context) {
-	c.JSON(http.StatusOK, response.Success("Student report fetched (stub)", nil))
+	studentID := c.Param("student_id")
+	fromDate := c.Query("from_date")
+	toDate := c.Query("to_date")
+
+	if studentID == "" || fromDate == "" || toDate == "" {
+		c.JSON(http.StatusBadRequest, response.Error("student_id, from_date, and to_date are required"))
+		return
+	}
+
+	report, err := h.service.GetStudentReport(studentID, fromDate, toDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, response.Success("Student report fetched successfully", report))
 }
 
 func (h *ReportHandler) Export(c *gin.Context) {
