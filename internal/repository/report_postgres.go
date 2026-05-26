@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"alhikmah-attendance-api/internal/domain"
@@ -65,7 +66,14 @@ func (r *reportPostgres) GetAggregatedReportRaw(classID, startDate, endDate stri
 			COUNT(CASE WHEN a.status = 'hadir' THEN 1 END) as total_hadir,
 			COUNT(CASE WHEN a.status = 'izin' THEN 1 END) as total_izin,
 			COUNT(CASE WHEN a.status = 'sakit' THEN 1 END) as total_sakit,
-			COUNT(CASE WHEN a.status = 'tanpa_keterangan' THEN 1 END) as total_tanpa_keterangan
+			COUNT(CASE WHEN a.status = 'tanpa_keterangan' THEN 1 END) as total_tanpa_keterangan,
+			COALESCE(
+				JSON_OBJECT_AGG(
+					EXTRACT(DAY FROM a.attendance_date)::int, 
+					a.status
+				) FILTER (WHERE a.attendance_date IS NOT NULL), 
+				'{}'
+			) as daily_statuses
 		FROM students s
 		LEFT JOIN attendances a ON s.id = a.student_id AND a.attendance_date >= $1 AND a.attendance_date <= $2
 		WHERE s.class_id = $3 AND s.is_active = true
@@ -81,9 +89,23 @@ func (r *reportPostgres) GetAggregatedReportRaw(classID, startDate, endDate stri
 	var stats []domain.MonthlyStatRaw
 	for rows.Next() {
 		var item domain.MonthlyStatRaw
-		if err := rows.Scan(&item.NISN, &item.StudentName, &item.Hadir, &item.Izin, &item.Sakit, &item.TanpaKeterangan); err != nil {
+		var dailyStatusesJSON []byte
+		if err := rows.Scan(
+			&item.NISN, &item.StudentName, 
+			&item.Hadir, &item.Izin, &item.Sakit, &item.TanpaKeterangan,
+			&dailyStatusesJSON,
+		); err != nil {
 			return nil, 0, err
 		}
+		
+		item.DailyStatuses = make(map[int]string)
+		if len(dailyStatusesJSON) > 0 && string(dailyStatusesJSON) != "{}" {
+			importJsonErr := json.Unmarshal(dailyStatusesJSON, &item.DailyStatuses)
+			if importJsonErr != nil {
+				// Ignore JSON unmarshal error, it will just leave it empty
+			}
+		}
+		
 		stats = append(stats, item)
 	}
 

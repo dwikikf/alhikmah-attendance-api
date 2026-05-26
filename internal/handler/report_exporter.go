@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"alhikmah-attendance-api/internal/domain"
 	"github.com/gin-gonic/gin"
@@ -12,7 +13,7 @@ import (
 )
 
 func (h *ReportHandler) exportDaily(c *gin.Context, report *domain.DailyReport, format string) {
-	filename := fmt.Sprintf("Laporan Kehadiran Harian Kelas %s", report.ClassName)
+	filename := fmt.Sprintf("Laporan Kehadiran Harian %s", report.ClassName)
 
 	if format == "csv" {
 		c.Header("Content-Type", "text/csv")
@@ -75,8 +76,20 @@ func (h *ReportHandler) exportDaily(c *gin.Context, report *domain.DailyReport, 
 	}
 }
 
-func (h *ReportHandler) exportMonthly(c *gin.Context, report *domain.MonthlyReport, format string) {
-	filename := fmt.Sprintf("Laporan Kehadiran Bulanan Kelas %s", report.ClassName)
+func (h *ReportHandler) exportMonthly(c *gin.Context, report *domain.MonthlyReport, monthStr string, format string) {
+	filename := fmt.Sprintf("Laporan Kehadiran Bulanan %s", report.ClassName)
+
+	daysInMonth := 31
+	t, err := time.Parse("2006-01", monthStr)
+	if err == nil {
+		daysInMonth = time.Date(t.Year(), t.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+	}
+
+	headers := []string{"No", "NISN", "Nama Siswa"}
+	for d := 1; d <= daysInMonth; d++ {
+		headers = append(headers, strconv.Itoa(d))
+	}
+	headers = append(headers, "Hadir", "Izin", "Sakit", "Alpa", "Persentase Kehadiran (%)")
 
 	if format == "csv" {
 		c.Header("Content-Type", "text/csv")
@@ -85,17 +98,32 @@ func (h *ReportHandler) exportMonthly(c *gin.Context, report *domain.MonthlyRepo
 		writer := csv.NewWriter(c.Writer)
 		defer writer.Flush()
 
-		writer.Write([]string{"NISN", "Nama Siswa", "Hadir", "Izin", "Sakit", "Alpa", "Persentase Kehadiran (%)"})
-		for _, rec := range report.StudentStats {
-			writer.Write([]string{
-				rec.NISN,
-				rec.StudentName,
-				strconv.Itoa(rec.Hadir),
-				strconv.Itoa(rec.Izin),
-				strconv.Itoa(rec.Sakit),
-				strconv.Itoa(rec.TanpaKeterangan),
+		writer.Write(headers)
+		for i, rec := range report.StudentStats {
+			row := []string{strconv.Itoa(i + 1), rec.NISN, rec.StudentName}
+			for d := 1; d <= daysInMonth; d++ {
+				status := rec.DailyStatuses[d]
+				short := "-"
+				switch status {
+				case "hadir":
+					short = "H"
+				case "izin":
+					short = "I"
+				case "sakit":
+					short = "S"
+				case "tanpa_keterangan":
+					short = "A"
+				}
+				row = append(row, short)
+			}
+			row = append(row, 
+				strconv.Itoa(rec.Hadir), 
+				strconv.Itoa(rec.Izin), 
+				strconv.Itoa(rec.Sakit), 
+				strconv.Itoa(rec.TanpaKeterangan), 
 				fmt.Sprintf("%.2f", rec.AttendancePercentage),
-			})
+			)
+			writer.Write(row)
 		}
 		return
 	}
@@ -109,21 +137,36 @@ func (h *ReportHandler) exportMonthly(c *gin.Context, report *domain.MonthlyRepo
 		}
 		f.SetSheetName("Sheet1", sheet)
 
-		headers := []string{"NISN", "Nama Siswa", "Hadir", "Izin", "Sakit", "Alpa", "Persentase Kehadiran (%)"}
 		for i, hd := range headers {
 			cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 			f.SetCellValue(sheet, cell, hd)
 		}
 
 		for i, rec := range report.StudentStats {
-			row := i + 2
-			f.SetCellValue(sheet, fmt.Sprintf("A%d", row), rec.NISN)
-			f.SetCellValue(sheet, fmt.Sprintf("B%d", row), rec.StudentName)
-			f.SetCellValue(sheet, fmt.Sprintf("C%d", row), rec.Hadir)
-			f.SetCellValue(sheet, fmt.Sprintf("D%d", row), rec.Izin)
-			f.SetCellValue(sheet, fmt.Sprintf("E%d", row), rec.Sakit)
-			f.SetCellValue(sheet, fmt.Sprintf("F%d", row), rec.TanpaKeterangan)
-			f.SetCellValue(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("%.2f", rec.AttendancePercentage))
+			rowNum := i + 2
+			
+			rowValues := []interface{}{strconv.Itoa(i + 1), rec.NISN, rec.StudentName}
+			for d := 1; d <= daysInMonth; d++ {
+				status := rec.DailyStatuses[d]
+				short := "-"
+				switch status {
+				case "hadir":
+					short = "H"
+				case "izin":
+					short = "I"
+				case "sakit":
+					short = "S"
+				case "tanpa_keterangan":
+					short = "A"
+				}
+				rowValues = append(rowValues, short)
+			}
+			rowValues = append(rowValues, rec.Hadir, rec.Izin, rec.Sakit, rec.TanpaKeterangan, fmt.Sprintf("%.2f", rec.AttendancePercentage))
+
+			for colIdx, val := range rowValues {
+				cell, _ := excelize.CoordinatesToCellName(colIdx+1, rowNum)
+				f.SetCellValue(sheet, cell, val)
+			}
 		}
 
 		c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -134,7 +177,7 @@ func (h *ReportHandler) exportMonthly(c *gin.Context, report *domain.MonthlyRepo
 }
 
 func (h *ReportHandler) exportSemester(c *gin.Context, report *domain.SemesterReport, format string) {
-	filename := fmt.Sprintf("Laporan Kehadiran Semester Kelas %s", report.ClassName)
+	filename := fmt.Sprintf("Laporan Kehadiran Semester %s", report.ClassName)
 
 	if format == "csv" {
 		c.Header("Content-Type", "text/csv")

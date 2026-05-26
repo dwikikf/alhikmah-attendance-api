@@ -34,9 +34,10 @@ type MonthlyStudentStats struct {
 	StudentName          string  `json:"student_name"`
 	Hadir                int     `json:"hadir"`
 	Izin                 int     `json:"izin"`
-	Sakit                int     `json:"sakit"`
-	TanpaKeterangan      int     `json:"tanpa_keterangan"`
-	AttendancePercentage float64 `json:"attendance_percentage"`
+	Sakit                int            `json:"sakit"`
+	TanpaKeterangan      int            `json:"tanpa_keterangan"`
+	DailyStatuses        map[int]string `json:"daily_statuses"`
+	AttendancePercentage float64        `json:"attendance_percentage"`
 }
 
 type MonthlySummary struct {
@@ -132,6 +133,7 @@ type MonthlyStatRaw struct {
 	Izin            int
 	Sakit           int
 	TanpaKeterangan int
+	DailyStatuses   map[int]string
 }
 
 type TrendRaw struct {

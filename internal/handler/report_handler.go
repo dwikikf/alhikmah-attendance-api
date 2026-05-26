@@ -143,7 +143,7 @@ func (h *ReportHandler) Export(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 			return
 		}
-		h.exportMonthly(c, report, req.Format)
+		h.exportMonthly(c, report, req.Month, req.Format)
 
 	case "semesteran":
 		if req.Semester == "" || req.AcademicYear == "" {

@@ -140,6 +140,7 @@ func (s *reportService) GetMonthlyReport(classID, monthStr string) (*domain.Mont
 			Izin:                 r.Izin,
 			Sakit:                r.Sakit,
 			TanpaKeterangan:      r.TanpaKeterangan,
+			DailyStatuses:        r.DailyStatuses,
 			AttendancePercentage: pct,
 		})
 
@@ -249,6 +250,7 @@ func (s *reportService) GetSemesterReport(classID, academicYear string, semester
 			Izin:                 r.Izin,
 			Sakit:                r.Sakit,
 			TanpaKeterangan:      r.TanpaKeterangan,
+			DailyStatuses:        r.DailyStatuses,
 			AttendancePercentage: pct,
 		})
 
