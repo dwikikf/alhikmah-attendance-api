@@ -28,22 +28,28 @@ func (h *StudentHandler) Create(c *gin.Context) {
 		return
 	}
 
+	class, err := h.classService.GetByID(req.ClassID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.Error("Invalid class ID"))
+		return
+	}
+
 	role, _ := c.Get("role")
 	if role == "teacher" {
 		userID, _ := c.Get("userID")
-		class, err := h.classService.GetByID(req.ClassID)
-		if err != nil || class.TeacherID != userID.(string) {
+		if class.TeacherID != userID.(string) {
 			c.JSON(http.StatusForbidden, response.Error("You are not authorized to add students to this class"))
 			return
 		}
 	}
 
 	student := &domain.Student{
-		NISN:     req.NISN,
-		FullName: req.FullName,
-		ClassID:  req.ClassID,
-		Gender:   req.Gender,
-		DOB:      req.DOB,
+		NISN:      req.NISN,
+		FullName:  req.FullName,
+		ClassID:   req.ClassID,
+		ClassName: class.ClassName,
+		Gender:    req.Gender,
+		DOB:       req.DOB,
 	}
 
 	if err := h.service.Create(student); err != nil {
@@ -198,13 +204,33 @@ func (h *StudentHandler) Update(c *gin.Context) {
 		}
 	}
 
+	// Always get current student to get NISN
+	studentToUpdate, err := h.service.GetByID(studentID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, response.Error("Student not found"))
+		return
+	}
+
+	// Get target class to get ClassName for QR Code
+	var className string
+	if req.ClassID != "" {
+		targetClass, err := h.classService.GetByID(req.ClassID)
+		if err == nil {
+			className = targetClass.ClassName
+		}
+	} else {
+		className = studentToUpdate.ClassName
+	}
+
 	student := &domain.Student{
-		ID:       studentID,
-		FullName: req.FullName,
-		ClassID:  req.ClassID,
-		DOB:      req.DOB,
-		Gender:   req.Gender,
-		IsActive: req.IsActive,
+		ID:        studentID,
+		NISN:      studentToUpdate.NISN,
+		FullName:  req.FullName,
+		ClassID:   req.ClassID,
+		ClassName: className,
+		DOB:       req.DOB,
+		Gender:    req.Gender,
+		IsActive:  req.IsActive,
 	}
 
 	if err := h.service.Update(student); err != nil {

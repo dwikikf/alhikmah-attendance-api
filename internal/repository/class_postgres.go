@@ -142,3 +142,19 @@ func (r *classPostgres) SoftDelete(id string) error {
 	_, err := r.db.Exec(query, id)
 	return err
 }
+
+func (r *classPostgres) IsTeacherResponsibleForStudent(studentID string, teacherID string) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1 FROM students s
+			JOIN classes c ON s.class_id = c.id
+			WHERE s.id = $1 AND c.teacher_id = $2 AND s.deleted_at IS NULL AND c.deleted_at IS NULL
+		)
+	`
+	var isResponsible bool
+	err := r.db.QueryRow(query, studentID, teacherID).Scan(&isResponsible)
+	if err != nil {
+		return false, err
+	}
+	return isResponsible, nil
+}

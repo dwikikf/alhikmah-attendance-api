@@ -33,8 +33,8 @@ type AttendanceRepository interface {
 }
 
 type AttendanceService interface {
-	ScanQR(qrData string, recordedBy string) error
-	ManualInput(classID string, studentIDs []string, status, notes, recordedBy string) error
+	ProcessQRScan(nisn string, teacherID string, role string) error
+	ProcessManualAttendance(studentID string, status string, notes string, teacherID string, role string) error
 	UpdateManual(attendanceID, status, reason, changedBy string) error
 	GetClassAttendanceForToday(classID string) ([]*Attendance, error)
 	GetByClassAndDate(classID string, date time.Time) ([]*Attendance, error)

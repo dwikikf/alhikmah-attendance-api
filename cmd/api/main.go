@@ -11,6 +11,7 @@ import (
 	"alhikmah-attendance-api/internal/repository"
 	"alhikmah-attendance-api/internal/service"
 	"alhikmah-attendance-api/pkg/database"
+	"alhikmah-attendance-api/pkg/cache"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -49,7 +50,9 @@ func main() {
 	userService := service.NewUserService(userRepo)
 	classService := service.NewClassService(classRepo)
 	studentService := service.NewStudentService(studentRepo)
-	attendanceService := service.NewAttendanceService(attendanceRepo, studentRepo)
+	
+	qrCache := cache.NewCache()
+	attendanceService := service.NewAttendanceService(attendanceRepo, studentRepo, classRepo, qrCache)
 	reportService := service.NewReportService(reportRepo, studentRepo, reportCacheRepo)
 	dashboardService := service.NewDashboardService(dashboardRepo)
 

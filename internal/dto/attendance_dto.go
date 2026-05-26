@@ -1,12 +1,11 @@
 package dto
 
 type ScanQRRequest struct {
-	QRCodeData string `json:"qr_code_data" binding:"required"`
+	NISN string `json:"nisn" binding:"required"`
 }
 
 type ManualAttendanceRequest struct {
-	ClassID    string   `json:"class_id" binding:"required"`
-	StudentIDs []string `json:"student_ids" binding:"required"`
-	Status     string   `json:"status" binding:"required"`
-	Notes      string   `json:"notes"`
+	StudentID string `json:"student_id" binding:"required"`
+	Status    string `json:"status" binding:"required"`
+	Notes     string `json:"notes"`
 }

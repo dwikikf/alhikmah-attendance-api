@@ -15,10 +15,10 @@ func NewStudentService(repo domain.StudentRepository) domain.StudentService {
 	return &studentService{repo: repo}
 }
 
-func (s *studentService) GenerateQRCodeData(nisn, fullName, classID string) string {
-	// Simple format: NISN|FullName|ClassID
+func (s *studentService) GenerateQRCodeData(nisn, fullName, className string) string {
+	// Simple format: NISN|FullName|ClassName
 	// In a real scenario, this could be a JSON string or an encrypted payload
-	return fmt.Sprintf("%s|%s|%s", nisn, fullName, classID)
+	return fmt.Sprintf("%s|%s|%s", nisn, fullName, className)
 }
 
 func (s *studentService) Create(student *domain.Student) error {
@@ -27,7 +27,7 @@ func (s *studentService) Create(student *domain.Student) error {
 	}
 
 	// Generate QR code data automatically
-	student.QRCodeData = s.GenerateQRCodeData(student.NISN, student.FullName, student.ClassID)
+	student.QRCodeData = s.GenerateQRCodeData(student.NISN, student.FullName, student.ClassName)
 
 	return s.repo.Create(student)
 }
@@ -45,6 +45,9 @@ func (s *studentService) GetAll(teacherID string, isActive *bool, classID, searc
 }
 
 func (s *studentService) Update(student *domain.Student) error {
+	if student.NISN != "" && student.FullName != "" && student.ClassName != "" {
+		student.QRCodeData = s.GenerateQRCodeData(student.NISN, student.FullName, student.ClassName)
+	}
 	return s.repo.Update(student)
 }
 

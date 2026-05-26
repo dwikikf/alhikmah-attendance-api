@@ -37,7 +37,7 @@ type StudentService interface {
 	GetByID(id string) (*Student, error)
 	GetByClassID(classID string) ([]*Student, error)
 	GetAll(teacherID string, isActive *bool, classID, search string, page, limit int) ([]*Student, int, error)
-	GenerateQRCodeData(nisn, fullName, classID string) string
+	GenerateQRCodeData(nisn, fullName, className string) string
 	Update(student *Student) error
 	SoftDelete(id string) error
 }

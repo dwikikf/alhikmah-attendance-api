@@ -28,8 +28,9 @@ func (h *AttendanceHandler) ScanQR(c *gin.Context) {
 	}
 
 	userID, _ := c.Get("userID")
+	role, _ := c.Get("role")
 
-	if err := h.service.ScanQR(req.QRCodeData, userID.(string)); err != nil {
+	if err := h.service.ProcessQRScan(req.NISN, userID.(string), role.(string)); err != nil {
 		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
 	}
@@ -46,8 +47,9 @@ func (h *AttendanceHandler) ManualInput(c *gin.Context) {
 	}
 
 	userID, _ := c.Get("userID")
+	role, _ := c.Get("role")
 
-	if err := h.service.ManualInput(req.ClassID, req.StudentIDs, req.Status, req.Notes, userID.(string)); err != nil {
+	if err := h.service.ProcessManualAttendance(req.StudentID, req.Status, req.Notes, userID.(string), role.(string)); err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
 	}

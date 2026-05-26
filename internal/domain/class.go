@@ -22,6 +22,7 @@ type ClassRepository interface {
 	Create(class *Class) error
 	Update(class *Class) error
 	SoftDelete(id string) error
+	IsTeacherResponsibleForStudent(studentID string, teacherID string) (bool, error)
 }
 
 type ClassService interface {

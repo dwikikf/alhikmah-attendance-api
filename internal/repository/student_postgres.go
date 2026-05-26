@@ -183,10 +183,10 @@ func (r *studentPostgres) GetAll(teacherID string, isActive *bool, classID, sear
 func (r *studentPostgres) Update(student *domain.Student) error {
 	query := `
 		UPDATE students 
-		SET full_name = $1, class_id = $2, date_of_birth = $3, gender = $4, is_active = $5, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $6 AND deleted_at IS NULL
+		SET full_name = $1, class_id = $2, date_of_birth = $3, gender = $4, is_active = $5, qr_code_data = $6, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $7 AND deleted_at IS NULL
 	`
-	_, err := r.db.Exec(query, student.FullName, student.ClassID, student.DOB, student.Gender, student.IsActive, student.ID)
+	_, err := r.db.Exec(query, student.FullName, student.ClassID, student.DOB, student.Gender, student.IsActive, student.QRCodeData, student.ID)
 	return err
 }
 
