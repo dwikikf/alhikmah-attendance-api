@@ -59,7 +59,7 @@ func main() {
 		Config: cfg,
 	}
 	userHandler := handler.NewUserHandler(userService)
-	classHandler := handler.NewClassHandler(classService)
+	classHandler := handler.NewClassHandler(classService, studentService)
 	studentHandler := handler.NewStudentHandler(studentService, classService)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 	reportHandler := handler.NewReportHandler(reportService)
@@ -119,6 +119,8 @@ func main() {
 			// Classes
 			protected.GET("/classes", classHandler.GetAll)
 			protected.GET("/classes/:class_id", classHandler.GetByID)
+			protected.GET("/classes/:class_id/export-excel", classHandler.ExportExcel)
+			protected.GET("/classes/:class_id/export-qrcode", classHandler.ExportQRCode)
 			protected.POST("/classes", middleware.RoleMiddleware("admin", "teacher"), classHandler.Create)
 			protected.PUT("/classes/:class_id", middleware.RoleMiddleware("admin", "teacher"), classHandler.Update)
 			protected.DELETE("/classes/:class_id", middleware.RoleMiddleware("admin", "teacher"), classHandler.Delete)

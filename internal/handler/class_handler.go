@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"archive/zip"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -9,14 +11,20 @@ import (
 	"alhikmah-attendance-api/pkg/response"
 
 	"github.com/gin-gonic/gin"
+	qrcode "github.com/skip2/go-qrcode"
+	"github.com/xuri/excelize/v2"
 )
 
 type ClassHandler struct {
-	service domain.ClassService
+	service        domain.ClassService
+	studentService domain.StudentService
 }
 
-func NewClassHandler(service domain.ClassService) *ClassHandler {
-	return &ClassHandler{service: service}
+func NewClassHandler(service domain.ClassService, studentService domain.StudentService) *ClassHandler {
+	return &ClassHandler{
+		service:        service,
+		studentService: studentService,
+	}
 }
 
 func (h *ClassHandler) GetAll(c *gin.Context) {
@@ -183,4 +191,89 @@ func (h *ClassHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response.Success("Class deleted successfully", nil))
+}
+
+func (h *ClassHandler) ExportExcel(c *gin.Context) {
+	classID := c.Param("class_id")
+
+	students, err := h.studentService.GetByClassID(classID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to fetch students"))
+		return
+	}
+
+	class, err := h.service.GetByID(classID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, response.Error("Class not found"))
+		return
+	}
+
+	f := excelize.NewFile()
+	defer f.Close()
+
+	sheetName := "Data Siswa"
+	f.SetSheetName("Sheet1", sheetName)
+
+	// Set headers
+	headers := []string{"No", "NISN", "Nama Lengkap"}
+	for i, h := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		f.SetCellValue(sheetName, cell, h)
+	}
+
+	// Populate data
+	for i, student := range students {
+		row := i + 2
+		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), i+1)
+		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), student.NISN)
+		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), student.FullName)
+	}
+
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=Data_Siswa_%s.xlsx", class.ClassName))
+
+	if err := f.Write(c.Writer); err != nil {
+		return
+	}
+}
+
+func (h *ClassHandler) ExportQRCode(c *gin.Context) {
+	classID := c.Param("class_id")
+
+	students, err := h.studentService.GetByClassID(classID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.Error("Failed to fetch students"))
+		return
+	}
+
+	class, err := h.service.GetByID(classID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, response.Error("Class not found"))
+		return
+	}
+
+	c.Header("Content-Type", "application/zip")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=QRCode_%s.zip", class.ClassName))
+
+	zipWriter := zip.NewWriter(c.Writer)
+	defer zipWriter.Close()
+
+	for _, student := range students {
+		qrData := student.QRCodeData
+		if qrData == "" {
+			qrData = h.studentService.GenerateQRCodeData(student.NISN, student.FullName, student.ClassID)
+		}
+
+		png, err := qrcode.Encode(qrData, qrcode.Medium, 256)
+		if err != nil {
+			continue
+		}
+
+		fileName := fmt.Sprintf("%s_%s.png", student.NISN, student.FullName)
+		f, err := zipWriter.Create(fileName)
+		if err != nil {
+			continue
+		}
+		f.Write(png)
+	}
 }
