@@ -153,11 +153,24 @@ func (s *reportService) GetMonthlyReport(classID, monthStr string) (*domain.Mont
 		summary.AvgHadirPercentage = totalHadirPct / float64(summary.TotalStudents)
 	}
 
+	monthsId := map[string]string{
+		"January": "Januari", "February": "Februari", "March": "Maret",
+		"April": "April", "May": "Mei", "June": "Juni",
+		"July": "Juli", "August": "Agustus", "September": "September",
+		"October": "Oktober", "November": "November", "December": "Desember",
+	}
+	monthNameEn := t.Format("January")
+	monthNameId := monthsId[monthNameEn]
+	if monthNameId == "" {
+		monthNameId = monthNameEn
+	}
+	periodName := fmt.Sprintf("%s %d", monthNameId, t.Year())
+
 	report := &domain.MonthlyReport{
 		ReportType:   "bulanan",
 		ClassID:      classID,
 		ClassName:    className,
-		Period:       t.Format("January 2006"), // e.g., "May 2026"
+		Period:       periodName, // e.g., "Mei 2026"
 		TotalDays:    totalDays,
 		Summary:      summary,
 		StudentStats: stats,

@@ -98,6 +98,71 @@ func (h *ReportHandler) GetStudentReport(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Success("Student report fetched successfully", report))
 }
 
+type ExportRequest struct {
+	ReportType   string `json:"report_type" binding:"required"`
+	ClassID      string `json:"class_id" binding:"required"`
+	Date         string `json:"date"`
+	Month        string `json:"month"`
+	Semester     string `json:"semester"`
+	AcademicYear string `json:"academic_year"`
+	Format       string `json:"format" binding:"required"`
+}
+
 func (h *ReportHandler) Export(c *gin.Context) {
-	c.JSON(http.StatusOK, response.Success("Report exported (stub)", nil))
+	var req ExportRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, response.Error("Invalid request payload"))
+		return
+	}
+
+	if req.Format != "csv" && req.Format != "excel" {
+		c.JSON(http.StatusBadRequest, response.Error("Unsupported format. Use 'csv' or 'excel'"))
+		return
+	}
+
+	switch req.ReportType {
+	case "harian":
+		if req.Date == "" {
+			c.JSON(http.StatusBadRequest, response.Error("date is required for daily report"))
+			return
+		}
+		report, err := h.service.GetDailyReport(req.ClassID, req.Date)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
+			return
+		}
+		h.exportDaily(c, report, req.Format)
+
+	case "bulanan":
+		if req.Month == "" {
+			c.JSON(http.StatusBadRequest, response.Error("month is required for monthly report"))
+			return
+		}
+		report, err := h.service.GetMonthlyReport(req.ClassID, req.Month)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
+			return
+		}
+		h.exportMonthly(c, report, req.Format)
+
+	case "semesteran":
+		if req.Semester == "" || req.AcademicYear == "" {
+			c.JSON(http.StatusBadRequest, response.Error("semester and academic_year are required"))
+			return
+		}
+		sem, err := strconv.Atoi(req.Semester)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, response.Error("invalid semester format"))
+			return
+		}
+		report, err := h.service.GetSemesterReport(req.ClassID, req.AcademicYear, sem)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
+			return
+		}
+		h.exportSemester(c, report, req.Format)
+
+	default:
+		c.JSON(http.StatusBadRequest, response.Error("Unsupported report_type"))
+	}
 }
