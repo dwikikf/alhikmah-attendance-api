@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"encoding/csv"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 
 	"alhikmah-attendance-api/internal/domain"
 	"alhikmah-attendance-api/internal/dto"
@@ -244,3 +247,117 @@ func (h *StudentHandler) Update(c *gin.Context) {
 func (h *StudentHandler) GetQRCode(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Success("Student QR Code generated (stub)", nil))
 }
+
+func (h *StudentHandler) ImportCSV(c *gin.Context) {
+	// Parse multipart form
+	classID := c.PostForm("class_id")
+	if classID == "" {
+		c.JSON(http.StatusBadRequest, response.Error("class_id is required"))
+		return
+	}
+
+	class, err := h.classService.GetByID(classID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.Error("Invalid class ID"))
+		return
+	}
+
+	role, _ := c.Get("role")
+	if role == "teacher" {
+		userID, _ := c.Get("userID")
+		if class.TeacherID != userID.(string) {
+			c.JSON(http.StatusForbidden, response.Error("You are not authorized to add students to this class"))
+			return
+		}
+	}
+
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.Error("CSV file is required"))
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	// Read header
+	header, err := reader.Read()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.Error("Failed to read CSV header"))
+		return
+	}
+
+	// Validate header (expected: nisn, nama_siswa, gender)
+	if len(header) < 3 || strings.ToLower(strings.TrimSpace(header[0])) != "nisn" {
+		c.JSON(http.StatusBadRequest, response.Error("Invalid CSV format. Expected header: nisn, nama_siswa, gender"))
+		return
+	}
+
+	var students []*domain.Student
+	rowIndex := 1 // header is row 1
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		rowIndex++
+		if err != nil {
+			c.JSON(http.StatusBadRequest, response.Error(fmt.Sprintf("Gagal membaca CSV pada baris %d: %v", rowIndex, err)))
+			return
+		}
+
+		if len(record) < 3 {
+			continue // skip invalid rows
+		}
+
+		nisn := strings.TrimSpace(record[0])
+		nama := strings.TrimSpace(record[1])
+		genderRaw := strings.TrimSpace(record[2])
+
+		if nisn == "" || nama == "" {
+			continue // skip empty rows
+		}
+
+		if len(nisn) != 10 {
+			c.JSON(http.StatusBadRequest, response.Error(fmt.Sprintf("Validasi gagal pada baris %d: NISN harus 10 karakter.", rowIndex)))
+			return
+		}
+
+		if len(nama) < 3 {
+			c.JSON(http.StatusBadRequest, response.Error(fmt.Sprintf("Validasi gagal pada baris %d: Nama siswa (NISN %s) minimal 3 karakter.", rowIndex, nisn)))
+			return
+		}
+
+		var gender string
+		g := strings.ToUpper(genderRaw)
+		if g == "L" {
+			gender = "laki-laki"
+		} else if g == "P" {
+			gender = "perempuan"
+		} else {
+			c.JSON(http.StatusBadRequest, response.Error(fmt.Sprintf("Format gender tidak valid pada baris %d (NISN %s). Hanya gunakan 'L' atau 'P'.", rowIndex, nisn)))
+			return
+		}
+
+		student := &domain.Student{
+			NISN:      nisn,
+			FullName:  nama,
+			ClassID:   classID,
+			ClassName: class.ClassName,
+			Gender:    &gender,
+		}
+		students = append(students, student)
+	}
+
+	if len(students) == 0 {
+		c.JSON(http.StatusBadRequest, response.Error("No valid student data found in CSV"))
+		return
+	}
+
+	if err := h.service.CreateBulk(students); err != nil {
+		handleDBError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, response.Success(fmt.Sprintf("%d students imported successfully", len(students)), nil))
+}
+

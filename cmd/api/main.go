@@ -132,6 +132,7 @@ func main() {
 			protected.GET("/students", studentHandler.GetAll)
 			protected.GET("/students/:student_id", studentHandler.GetByID)
 			protected.POST("/students", studentHandler.Create)
+			protected.POST("/students/import", studentHandler.ImportCSV)
 			protected.PUT("/students/:student_id", studentHandler.Update)
 			protected.DELETE("/students/:student_id", studentHandler.Delete)
 			protected.GET("/classes/:class_id/students", studentHandler.GetByClass)

@@ -25,6 +25,35 @@ func (r *studentPostgres) Create(student *domain.Student) error {
 		Scan(&student.ID, &student.IsActive, &student.CreatedAt, &student.UpdatedAt)
 }
 
+func (r *studentPostgres) CreateBulk(students []*domain.Student) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `
+		INSERT INTO students (nisn, full_name, class_id, date_of_birth, gender, qr_code_data)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, is_active, created_at, updated_at
+	`
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, student := range students {
+		err := stmt.QueryRow(student.NISN, student.FullName, student.ClassID, student.DOB, student.Gender, student.QRCodeData).
+			Scan(&student.ID, &student.IsActive, &student.CreatedAt, &student.UpdatedAt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (r *studentPostgres) GetByID(id string) (*domain.Student, error) {
 	var s domain.Student
 	var dob, gender, photoURL sql.NullString

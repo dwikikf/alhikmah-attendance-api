@@ -24,6 +24,7 @@ type Student struct {
 
 type StudentRepository interface {
 	Create(student *Student) error
+	CreateBulk(students []*Student) error
 	GetByID(id string) (*Student, error)
 	GetByClassID(classID string) ([]*Student, error)
 	GetByNISN(nisn string) (*Student, error)
@@ -34,6 +35,7 @@ type StudentRepository interface {
 
 type StudentService interface {
 	Create(student *Student) error
+	CreateBulk(students []*Student) error
 	GetByID(id string) (*Student, error)
 	GetByClassID(classID string) ([]*Student, error)
 	GetAll(teacherID string, isActive *bool, classID, search string, page, limit int) ([]*Student, int, error)

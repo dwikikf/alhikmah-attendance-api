@@ -32,6 +32,18 @@ func (s *studentService) Create(student *domain.Student) error {
 	return s.repo.Create(student)
 }
 
+func (s *studentService) CreateBulk(students []*domain.Student) error {
+	for _, student := range students {
+		if student.NISN == "" || student.FullName == "" || student.ClassID == "" {
+			return errors.New("missing required fields in one or more students")
+		}
+		// Generate QR code data automatically
+		student.QRCodeData = s.GenerateQRCodeData(student.NISN, student.FullName, student.ClassName)
+	}
+
+	return s.repo.CreateBulk(students)
+}
+
 func (s *studentService) GetByID(id string) (*domain.Student, error) {
 	return s.repo.GetByID(id)
 }
