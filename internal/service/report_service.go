@@ -23,7 +23,7 @@ func NewReportService(reportRepo domain.ReportRepository, studentRepo domain.Stu
 	}
 }
 
-func (s *reportService) GetDailyReport(classID, dateStr string, forceRefresh bool) (*domain.DailyReport, error) {
+func (s *reportService) GetDailyReport(classID, dateStr string, forceRefresh bool, generatedBy string) (*domain.DailyReport, error) {
 	_, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
 		return nil, errors.New("invalid date format")
@@ -92,13 +92,13 @@ func (s *reportService) GetDailyReport(classID, dateStr string, forceRefresh boo
 
 	data, err := json.Marshal(report)
 	if err == nil {
-		s.cache.Set("harian", classID, dateStr, dateStr, "", data)
+		s.cache.Set("harian", classID, dateStr, dateStr, generatedBy, data)
 	}
 
 	return report, nil
 }
 
-func (s *reportService) GetMonthlyReport(classID, monthStr string, forceRefresh bool) (*domain.MonthlyReport, error) {
+func (s *reportService) GetMonthlyReport(classID, monthStr string, forceRefresh bool, generatedBy string) (*domain.MonthlyReport, error) {
 	t, err := time.Parse("2006-01", monthStr)
 	if err != nil {
 		return nil, errors.New("invalid month format")
@@ -188,13 +188,13 @@ func (s *reportService) GetMonthlyReport(classID, monthStr string, forceRefresh 
 
 	data, err := json.Marshal(report)
 	if err == nil {
-		s.cache.Set("bulanan", classID, startDate, endDate, "", data)
+		s.cache.Set("bulanan", classID, startDate, endDate, generatedBy, data)
 	}
 
 	return report, nil
 }
 
-func (s *reportService) GetSemesterReport(classID, academicYear string, semester int, forceRefresh bool) (*domain.SemesterReport, error) {
+func (s *reportService) GetSemesterReport(classID, academicYear string, semester int, forceRefresh bool, generatedBy string) (*domain.SemesterReport, error) {
 	if len(academicYear) != 9 || academicYear[4] != '/' {
 		return nil, errors.New("invalid academic year format")
 	}
@@ -302,7 +302,7 @@ func (s *reportService) GetSemesterReport(classID, academicYear string, semester
 
 	data, err := json.Marshal(report)
 	if err == nil {
-		s.cache.Set("semesteran", classID, startDate, endDate, "", data)
+		s.cache.Set("semesteran", classID, startDate, endDate, generatedBy, data)
 	}
 
 	return report, nil

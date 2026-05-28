@@ -28,7 +28,13 @@ func (h *ReportHandler) GetDailyReport(c *gin.Context) {
 		return
 	}
 
-	report, err := h.service.GetDailyReport(classID, dateStr, forceRefresh)
+	userID, _ := c.Get("userID")
+	generatedBy := ""
+	if uid, ok := userID.(string); ok {
+		generatedBy = uid
+	}
+
+	report, err := h.service.GetDailyReport(classID, dateStr, forceRefresh, generatedBy)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
@@ -47,7 +53,13 @@ func (h *ReportHandler) GetMonthlyReport(c *gin.Context) {
 		return
 	}
 
-	report, err := h.service.GetMonthlyReport(classID, monthStr, forceRefresh)
+	userID, _ := c.Get("userID")
+	generatedBy := ""
+	if uid, ok := userID.(string); ok {
+		generatedBy = uid
+	}
+
+	report, err := h.service.GetMonthlyReport(classID, monthStr, forceRefresh, generatedBy)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
@@ -73,7 +85,13 @@ func (h *ReportHandler) GetSemesterReport(c *gin.Context) {
 		return
 	}
 
-	report, err := h.service.GetSemesterReport(classID, academicYear, semester, forceRefresh)
+	userID, _ := c.Get("userID")
+	generatedBy := ""
+	if uid, ok := userID.(string); ok {
+		generatedBy = uid
+	}
+
+	report, err := h.service.GetSemesterReport(classID, academicYear, semester, forceRefresh, generatedBy)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
@@ -129,7 +147,12 @@ func (h *ReportHandler) Export(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, response.Error("date is required for daily report"))
 			return
 		}
-		report, err := h.service.GetDailyReport(req.ClassID, req.Date, false)
+		userID, _ := c.Get("userID")
+		generatedBy := ""
+		if uid, ok := userID.(string); ok {
+			generatedBy = uid
+		}
+		report, err := h.service.GetDailyReport(req.ClassID, req.Date, false, generatedBy)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 			return
@@ -141,7 +164,12 @@ func (h *ReportHandler) Export(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, response.Error("month is required for monthly report"))
 			return
 		}
-		report, err := h.service.GetMonthlyReport(req.ClassID, req.Month, false)
+		userID, _ := c.Get("userID")
+		generatedBy := ""
+		if uid, ok := userID.(string); ok {
+			generatedBy = uid
+		}
+		report, err := h.service.GetMonthlyReport(req.ClassID, req.Month, false, generatedBy)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 			return
@@ -158,7 +186,12 @@ func (h *ReportHandler) Export(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, response.Error("invalid semester format"))
 			return
 		}
-		report, err := h.service.GetSemesterReport(req.ClassID, req.AcademicYear, sem, false)
+		userID, _ := c.Get("userID")
+		generatedBy := ""
+		if uid, ok := userID.(string); ok {
+			generatedBy = uid
+		}
+		report, err := h.service.GetSemesterReport(req.ClassID, req.AcademicYear, sem, false, generatedBy)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 			return

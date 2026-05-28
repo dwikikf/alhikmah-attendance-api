@@ -158,8 +158,8 @@ type ReportCacheRepository interface {
 
 
 type ReportService interface {
-	GetDailyReport(classID, dateStr string, forceRefresh bool) (*DailyReport, error)
-	GetMonthlyReport(classID, monthStr string, forceRefresh bool) (*MonthlyReport, error)
-	GetSemesterReport(classID, academicYear string, semester int, forceRefresh bool) (*SemesterReport, error)
+	GetDailyReport(classID, dateStr string, forceRefresh bool, generatedBy string) (*DailyReport, error)
+	GetMonthlyReport(classID, monthStr string, forceRefresh bool, generatedBy string) (*MonthlyReport, error)
+	GetSemesterReport(classID, academicYear string, semester int, forceRefresh bool, generatedBy string) (*SemesterReport, error)
 	GetStudentReport(studentID, startDate, endDate string) (*StudentReport, error)
 }
