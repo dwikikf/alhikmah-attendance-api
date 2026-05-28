@@ -2,6 +2,7 @@ package handler
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"time"
 
@@ -17,6 +18,19 @@ import (
 type AuthHandler struct {
 	DB     *sql.DB
 	Config config.Config
+}
+
+// parseTokenDuration membaca durasi dari string config, fallback ke nilai default jika tidak valid.
+func parseTokenDuration(val string, defaultDuration time.Duration) time.Duration {
+	if val == "" {
+		return defaultDuration
+	}
+	d, err := time.ParseDuration(val)
+	if err != nil {
+		log.Printf("Peringatan: nilai durasi token '%s' tidak valid, menggunakan default: %s", val, defaultDuration)
+		return defaultDuration
+	}
+	return d
 }
 
 // DTOs moved to internal/dto
@@ -60,21 +74,31 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// Update last login
 	_, _ = h.DB.Exec("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1", id)
 
-	token, err := jwt.GenerateToken(id, email, fullName, role, h.Config.JWTSecret, 24*time.Hour)
+	// Baca durasi token dari konfigurasi, dengan fallback yang aman
+	accessTokenDuration := parseTokenDuration(h.Config.AccessTokenDuration, 1*time.Hour)
+	refreshTokenDuration := parseTokenDuration(h.Config.RefreshTokenDuration, 7*24*time.Hour)
+
+	token, err := jwt.GenerateToken(id, email, fullName, role, h.Config.JWTSecret, accessTokenDuration)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error("Failed to generate token"))
 		return
 	}
 
-	refreshToken, err := jwt.GenerateToken(id, email, fullName, role, h.Config.JWTRefreshSecret, 7*24*time.Hour)
+	refreshToken, err := jwt.GenerateToken(id, email, fullName, role, h.Config.JWTRefreshSecret, refreshTokenDuration)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error("Failed to generate refresh token"))
 		return
 	}
 
+	isProd := h.Config.AppEnv == "production" || h.Config.AppEnv == "prod"
+
+	// Set refresh token dalam HttpOnly cookie
+	// Name, Value, MaxAge (detik), Path, Domain, Secure, HttpOnly
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("refresh_token", refreshToken, int(refreshTokenDuration/time.Second), "/", "", isProd, true)
+
 	c.JSON(http.StatusOK, response.Success("Login successful", gin.H{
-		"token":         token,
-		"refresh_token": refreshToken,
+		"token": token,
 		"user": gin.H{
 			"id":       id,
 			"username": username,
@@ -86,20 +110,23 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	var req dto.RefreshRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error("Invalid request body: "+err.Error()))
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil || refreshToken == "" {
+		c.JSON(http.StatusUnauthorized, response.Error("Refresh token not found in cookie"))
 		return
 	}
 
-	claims, err := jwt.ValidateToken(req.RefreshToken, h.Config.JWTRefreshSecret)
+	claims, err := jwt.ValidateToken(refreshToken, h.Config.JWTRefreshSecret)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, response.Error("Invalid refresh token"))
 		return
 	}
 
+	// Baca durasi access token dari konfigurasi
+	accessTokenDuration := parseTokenDuration(h.Config.AccessTokenDuration, 1*time.Hour)
+
 	// Generate new access token
-	newToken, err := jwt.GenerateToken(claims.Sub, claims.Email, claims.Name, claims.Role, h.Config.JWTSecret, 24*time.Hour)
+	newToken, err := jwt.GenerateToken(claims.Sub, claims.Email, claims.Name, claims.Role, h.Config.JWTSecret, accessTokenDuration)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error("Failed to generate new token"))
 		return
@@ -111,23 +138,21 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	// For JWT, logout is typically handled client-side by destroying the token.
-	// You could implement a token blacklist here if needed.
+	isProd := h.Config.AppEnv == "production" || h.Config.AppEnv == "prod"
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("refresh_token", "", -1, "/", "", isProd, true)
 	c.JSON(http.StatusOK, response.Success("Logout successful", nil))
 }
 
 func (h *AuthHandler) ResetPasswordRequest(c *gin.Context) {
 	// Fitur dinonaktifkan sementara berdasarkan permintaan
-	// c.JSON(http.StatusOK, response.Success("Password reset requested (stub)", nil))
 	c.JSON(http.StatusForbidden, response.Error("Fitur lupa password dinonaktifkan. Silakan hubungi admin sekolah untuk mereset password Anda. Terima kasih."))
 }
 
 func (h *AuthHandler) ResetPasswordConfirm(c *gin.Context) {
-	// c.JSON(http.StatusOK, response.Success("Password reset confirmed (stub)", nil))
 	c.JSON(http.StatusForbidden, response.Error("Fitur lupa password dinonaktifkan. Silakan hubungi admin sekolah. Terima kasih."))
 }
 
 func (h *AuthHandler) ResetPasswordChange(c *gin.Context) {
-	// c.JSON(http.StatusOK, response.Success("Password changed successfully (stub)", nil))
 	c.JSON(http.StatusForbidden, response.Error("Fitur lupa password dinonaktifkan. Silakan hubungi admin sekolah. Terima kasih."))
 }
