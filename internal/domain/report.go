@@ -153,12 +153,13 @@ type ReportRepository interface {
 type ReportCacheRepository interface {
 	Get(reportType, classID, periodStart, periodEnd string) (json.RawMessage, error)
 	Set(reportType, classID, periodStart, periodEnd, generatedBy string, data json.RawMessage) error
+	Delete(reportType, classID, periodStart, periodEnd string) error
 }
 
 
 type ReportService interface {
-	GetDailyReport(classID, dateStr string) (*DailyReport, error)
-	GetMonthlyReport(classID, monthStr string) (*MonthlyReport, error)
-	GetSemesterReport(classID, academicYear string, semester int) (*SemesterReport, error)
+	GetDailyReport(classID, dateStr string, forceRefresh bool) (*DailyReport, error)
+	GetMonthlyReport(classID, monthStr string, forceRefresh bool) (*MonthlyReport, error)
+	GetSemesterReport(classID, academicYear string, semester int, forceRefresh bool) (*SemesterReport, error)
 	GetStudentReport(studentID, startDate, endDate string) (*StudentReport, error)
 }

@@ -21,13 +21,14 @@ func NewReportHandler(service domain.ReportService) *ReportHandler {
 func (h *ReportHandler) GetDailyReport(c *gin.Context) {
 	classID := c.Query("class_id")
 	dateStr := c.Query("date")
+	forceRefresh := c.Query("force_refresh") == "true"
 
 	if classID == "" || dateStr == "" {
 		c.JSON(http.StatusBadRequest, response.Error("class_id and date are required"))
 		return
 	}
 
-	report, err := h.service.GetDailyReport(classID, dateStr)
+	report, err := h.service.GetDailyReport(classID, dateStr, forceRefresh)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
@@ -39,13 +40,14 @@ func (h *ReportHandler) GetDailyReport(c *gin.Context) {
 func (h *ReportHandler) GetMonthlyReport(c *gin.Context) {
 	classID := c.Query("class_id")
 	monthStr := c.Query("month")
+	forceRefresh := c.Query("force_refresh") == "true"
 
 	if classID == "" || monthStr == "" {
 		c.JSON(http.StatusBadRequest, response.Error("class_id and month are required"))
 		return
 	}
 
-	report, err := h.service.GetMonthlyReport(classID, monthStr)
+	report, err := h.service.GetMonthlyReport(classID, monthStr, forceRefresh)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
@@ -58,6 +60,7 @@ func (h *ReportHandler) GetSemesterReport(c *gin.Context) {
 	classID := c.Query("class_id")
 	semesterStr := c.Query("semester")
 	academicYear := c.Query("academic_year")
+	forceRefresh := c.Query("force_refresh") == "true"
 
 	if classID == "" || semesterStr == "" || academicYear == "" {
 		c.JSON(http.StatusBadRequest, response.Error("class_id, semester, and academic_year are required"))
@@ -70,7 +73,7 @@ func (h *ReportHandler) GetSemesterReport(c *gin.Context) {
 		return
 	}
 
-	report, err := h.service.GetSemesterReport(classID, academicYear, semester)
+	report, err := h.service.GetSemesterReport(classID, academicYear, semester, forceRefresh)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
@@ -126,7 +129,7 @@ func (h *ReportHandler) Export(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, response.Error("date is required for daily report"))
 			return
 		}
-		report, err := h.service.GetDailyReport(req.ClassID, req.Date)
+		report, err := h.service.GetDailyReport(req.ClassID, req.Date, false)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 			return
@@ -138,7 +141,7 @@ func (h *ReportHandler) Export(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, response.Error("month is required for monthly report"))
 			return
 		}
-		report, err := h.service.GetMonthlyReport(req.ClassID, req.Month)
+		report, err := h.service.GetMonthlyReport(req.ClassID, req.Month, false)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 			return
@@ -155,7 +158,7 @@ func (h *ReportHandler) Export(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, response.Error("invalid semester format"))
 			return
 		}
-		report, err := h.service.GetSemesterReport(req.ClassID, req.AcademicYear, sem)
+		report, err := h.service.GetSemesterReport(req.ClassID, req.AcademicYear, sem, false)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 			return

@@ -23,17 +23,21 @@ func NewReportService(reportRepo domain.ReportRepository, studentRepo domain.Stu
 	}
 }
 
-func (s *reportService) GetDailyReport(classID, dateStr string) (*domain.DailyReport, error) {
+func (s *reportService) GetDailyReport(classID, dateStr string, forceRefresh bool) (*domain.DailyReport, error) {
 	_, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
 		return nil, errors.New("invalid date format")
 	}
 
-	cached, err := s.cache.Get("harian", classID, dateStr, dateStr)
-	if err == nil && cached != nil {
-		var report domain.DailyReport
-		if err := json.Unmarshal(cached, &report); err == nil {
-			return &report, nil
+	if forceRefresh {
+		s.cache.Delete("harian", classID, dateStr, dateStr)
+	} else {
+		cached, err := s.cache.Get("harian", classID, dateStr, dateStr)
+		if err == nil && cached != nil {
+			var report domain.DailyReport
+			if err := json.Unmarshal(cached, &report); err == nil {
+				return &report, nil
+			}
 		}
 	}
 
@@ -94,7 +98,7 @@ func (s *reportService) GetDailyReport(classID, dateStr string) (*domain.DailyRe
 	return report, nil
 }
 
-func (s *reportService) GetMonthlyReport(classID, monthStr string) (*domain.MonthlyReport, error) {
+func (s *reportService) GetMonthlyReport(classID, monthStr string, forceRefresh bool) (*domain.MonthlyReport, error) {
 	t, err := time.Parse("2006-01", monthStr)
 	if err != nil {
 		return nil, errors.New("invalid month format")
@@ -103,11 +107,15 @@ func (s *reportService) GetMonthlyReport(classID, monthStr string) (*domain.Mont
 	startDate := t.Format("2006-01-02")
 	endDate := t.AddDate(0, 1, -1).Format("2006-01-02")
 
-	cached, err := s.cache.Get("bulanan", classID, startDate, endDate)
-	if err == nil && cached != nil {
-		var report domain.MonthlyReport
-		if err := json.Unmarshal(cached, &report); err == nil {
-			return &report, nil
+	if forceRefresh {
+		s.cache.Delete("bulanan", classID, startDate, endDate)
+	} else {
+		cached, err := s.cache.Get("bulanan", classID, startDate, endDate)
+		if err == nil && cached != nil {
+			var report domain.MonthlyReport
+			if err := json.Unmarshal(cached, &report); err == nil {
+				return &report, nil
+			}
 		}
 	}
 
@@ -186,7 +194,7 @@ func (s *reportService) GetMonthlyReport(classID, monthStr string) (*domain.Mont
 	return report, nil
 }
 
-func (s *reportService) GetSemesterReport(classID, academicYear string, semester int) (*domain.SemesterReport, error) {
+func (s *reportService) GetSemesterReport(classID, academicYear string, semester int, forceRefresh bool) (*domain.SemesterReport, error) {
 	if len(academicYear) != 9 || academicYear[4] != '/' {
 		return nil, errors.New("invalid academic year format")
 	}
@@ -211,11 +219,15 @@ func (s *reportService) GetSemesterReport(classID, academicYear string, semester
 		return nil, errors.New("invalid semester value")
 	}
 
-	cached, err := s.cache.Get("semesteran", classID, startDate, endDate)
-	if err == nil && cached != nil {
-		var report domain.SemesterReport
-		if err := json.Unmarshal(cached, &report); err == nil {
-			return &report, nil
+	if forceRefresh {
+		s.cache.Delete("semesteran", classID, startDate, endDate)
+	} else {
+		cached, err := s.cache.Get("semesteran", classID, startDate, endDate)
+		if err == nil && cached != nil {
+			var report domain.SemesterReport
+			if err := json.Unmarshal(cached, &report); err == nil {
+				return &report, nil
+			}
 		}
 	}
 

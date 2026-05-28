@@ -54,3 +54,13 @@ func (r *reportCachePostgres) Set(reportType, classID, periodStart, periodEnd, g
 	_, err := r.db.Exec(query, reportType, classID, periodStart, periodEnd, genBy, data)
 	return err
 }
+
+func (r *reportCachePostgres) Delete(reportType, classID, periodStart, periodEnd string) error {
+	query := `
+		DELETE FROM reports 
+		WHERE report_type = $1 AND class_id = $2 AND period_start = $3 AND period_end = $4
+	`
+	_, err := r.db.Exec(query, reportType, classID, periodStart, periodEnd)
+	return err
+}
+
