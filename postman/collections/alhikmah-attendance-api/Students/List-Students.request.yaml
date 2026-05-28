@@ -1,13 +1,16 @@
 $kind: http-request
-name: List Users
+name: List Students
 method: GET
-url: '{{base_url}}/api/v1/users'
-order: 2000
+url: '{{base_url}}/api/v1/students'
+order: 1000
 headers:
   - key: Authorization
     value: 'Bearer {{auth_token}}'
 queryParams:
-  - key: role
+  - key: class_id
+    value: '{{class_id}}'
+    disabled: true
+  - key: search
     value: ''
     disabled: true
   - key: is_active

@@ -1,8 +1,8 @@
 $kind: http-request
-name: Get Class
-method: GET
+name: Delete Class
+method: DELETE
 url: '{{base_url}}/api/v1/classes/{{class_id}}'
-order: 2000
+order: 5000
 headers:
   - key: Authorization
     value: 'Bearer {{auth_token}}'

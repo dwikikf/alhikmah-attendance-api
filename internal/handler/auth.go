@@ -40,7 +40,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Warn("Failed to parse login request", slog.String("error", err.Error()), slog.String("ip", c.ClientIP()))
-		c.JSON(http.StatusBadRequest, response.Error("Invalid request body: "+err.Error()))
+		c.JSON(http.StatusBadRequest, response.ValidationError("Validasi gagal", utils.FormatValidationError(err)))
 		return
 	}
 

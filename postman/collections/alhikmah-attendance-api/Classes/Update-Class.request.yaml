@@ -1,0 +1,19 @@
+$kind: http-request
+name: Update Class
+method: PUT
+url: '{{base_url}}/api/v1/classes/{{class_id}}'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{auth_token}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "class_name": "7A Updated",
+      "teacher_id": "{{user_id}}",
+      "capacity": 35,
+      "description": "Kelas 7A Updated"
+    }

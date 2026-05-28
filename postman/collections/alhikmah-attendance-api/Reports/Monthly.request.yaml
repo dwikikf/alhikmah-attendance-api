@@ -1,16 +1,16 @@
 $kind: http-request
-name: Daily Report
+name: Monthly Report
 method: GET
-url: '{{base_url}}/api/v1/reports/daily'
-order: 1000
+url: '{{base_url}}/api/v1/reports/monthly'
+order: 2000
 headers:
   - key: Authorization
     value: 'Bearer {{auth_token}}'
 queryParams:
   - key: class_id
     value: '{{class_id}}'
-  - key: date
-    value: '2025-05-28'
+  - key: month
+    value: '2025-05'
   - key: force_refresh
     value: 'false'
     disabled: true

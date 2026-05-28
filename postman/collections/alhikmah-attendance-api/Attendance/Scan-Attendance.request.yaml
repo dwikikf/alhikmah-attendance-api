@@ -1,14 +1,14 @@
 $kind: http-request
-name: Scan Attendance
+name: Scan QR Attendance
 method: POST
-url: '{{base_url}}/api/v1/attendances/scan'
+url: "{{base_url}}/api/v1/attendances/qr-scan"
 order: 1000
 headers:
-  - key: Content-Type
-    value: application/json
+  Authorization: Bearer {{auth_token}}
+  Content-Type: application/json
 body:
   type: json
   content: |-
     {
-      "qr_code_data": "STUDENT_QR_CODE_PAYLOAD_HERE"
+      "nisn": "1111111111"
     }

@@ -1,16 +1,18 @@
 $kind: http-request
-name: Daily Report
+name: Semester Report
 method: GET
-url: '{{base_url}}/api/v1/reports/daily'
-order: 1000
+url: '{{base_url}}/api/v1/reports/semester'
+order: 3000
 headers:
   - key: Authorization
     value: 'Bearer {{auth_token}}'
 queryParams:
   - key: class_id
     value: '{{class_id}}'
-  - key: date
-    value: '2025-05-28'
+  - key: semester
+    value: '1'
+  - key: academic_year
+    value: '2024/2025'
   - key: force_refresh
     value: 'false'
     disabled: true

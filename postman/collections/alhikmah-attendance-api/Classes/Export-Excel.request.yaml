@@ -1,7 +1,7 @@
 $kind: http-request
-name: List Students by Class
+name: Export Excel
 method: GET
-url: '{{base_url}}/api/v1/classes/{{class_id}}/students'
+url: '{{base_url}}/api/v1/classes/{{class_id}}/export-excel'
 order: 6000
 headers:
   - key: Authorization

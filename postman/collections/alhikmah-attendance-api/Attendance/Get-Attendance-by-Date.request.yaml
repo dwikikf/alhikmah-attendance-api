@@ -1,0 +1,8 @@
+$kind: http-request
+name: Get Attendance by Date
+method: GET
+url: '{{base_url}}/api/v1/attendances/{{class_id}}/2025-05-28'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{auth_token}}'

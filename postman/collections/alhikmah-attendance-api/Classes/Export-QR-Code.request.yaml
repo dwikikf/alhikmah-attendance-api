@@ -1,8 +1,8 @@
 $kind: http-request
-name: List Students by Class
+name: Export QR Code
 method: GET
-url: '{{base_url}}/api/v1/classes/{{class_id}}/students'
-order: 6000
+url: '{{base_url}}/api/v1/classes/{{class_id}}/export-qrcode'
+order: 7000
 headers:
   - key: Authorization
     value: 'Bearer {{auth_token}}'

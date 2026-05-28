@@ -98,7 +98,7 @@ func (s *attendanceService) ProcessQRScan(nisn string, teacherID string, role st
 	return nil
 }
 
-func (s *attendanceService) ProcessManualAttendance(studentID string, status string, notes string, teacherID string, role string) error {
+func (s *attendanceService) ProcessManualAttendance(studentID string, status string, notes *string, teacherID string, role string) error {
 	if status != "hadir" && status != "izin" && status != "sakit" && status != "tanpa_keterangan" {
 		return errors.New("Status absensi tidak valid")
 	}
@@ -140,9 +140,7 @@ func (s *attendanceService) ProcessManualAttendance(studentID string, status str
 		Status:         status,
 		RecordedBy:     teacherID,
 		IsManual:       true,
-	}
-	if notes != "" {
-		attendance.Notes = &notes
+		Notes:          notes,
 	}
 
 	err = s.repo.MarkAttendance(attendance)

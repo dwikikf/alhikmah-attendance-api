@@ -1,0 +1,13 @@
+$kind: http-request
+name: Student Report
+method: GET
+url: '{{base_url}}/api/v1/reports/student/{{student_id}}'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{auth_token}}'
+queryParams:
+  - key: from_date
+    value: '2025-01-01'
+  - key: to_date
+    value: '2025-05-28'

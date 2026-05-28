@@ -1,0 +1,17 @@
+$kind: http-request
+name: Import Students CSV
+method: POST
+url: "{{base_url}}/api/v1/students/import"
+order: 7000
+headers:
+  Authorization: Bearer {{auth_token}}
+body:
+  type: formdata
+  content:
+    - type: text
+      key: class_id
+      value: "{{class_id}}"
+    - type: text
+      key: file
+      value: students.csv
+      description: "CSV file with columns: nisn, nama_siswa, gender (L/P)"

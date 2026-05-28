@@ -3,8 +3,6 @@ name: Login
 method: POST
 url: "{{base_url}}/api/v1/auth/login"
 order: 1000
-auth:
-  type: noauth
 headers:
   Content-Type: application/json
 body:
@@ -14,12 +12,3 @@ body:
       "username": "superadmin",
       "password": "superadmin"
     }
-scripts:
-  - type: afterResponse
-    code: |-
-      const res = pm.response.json();
-      if (res.success && res.data && res.data.token) {
-        pm.environment.set("auth_token", res.data.token);
-        console.log("Token saved to environment variable: auth_token");
-      }
-    language: text/javascript

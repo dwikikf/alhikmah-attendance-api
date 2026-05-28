@@ -7,6 +7,7 @@ import (
 	"alhikmah-attendance-api/internal/domain"
 	"alhikmah-attendance-api/internal/dto"
 	"alhikmah-attendance-api/pkg/response"
+	"alhikmah-attendance-api/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,7 +24,7 @@ func (h *AttendanceHandler) ScanQR(c *gin.Context) {
 	var req dto.ScanQRRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
+		c.JSON(http.StatusBadRequest, response.ValidationError("Validasi gagal", utils.FormatValidationError(err)))
 		return
 	}
 
@@ -42,7 +43,7 @@ func (h *AttendanceHandler) ManualInput(c *gin.Context) {
 	var req dto.ManualAttendanceRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
+		c.JSON(http.StatusBadRequest, response.ValidationError("Validasi gagal", utils.FormatValidationError(err)))
 		return
 	}
 

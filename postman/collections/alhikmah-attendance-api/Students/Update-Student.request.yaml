@@ -1,0 +1,20 @@
+$kind: http-request
+name: Update Student
+method: PUT
+url: '{{base_url}}/api/v1/students/{{student_id}}'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{auth_token}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "full_name": "Ahmad Fauzi Updated",
+      "class_id": "{{class_id}}",
+      "date_of_birth": "2010-05-15",
+      "gender": "laki-laki",
+      "is_active": true
+    }

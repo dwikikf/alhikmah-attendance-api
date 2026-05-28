@@ -3,3 +3,6 @@ name: Get Today Attendance
 method: GET
 url: '{{base_url}}/api/v1/classes/{{class_id}}/attendances/today'
 order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{auth_token}}'

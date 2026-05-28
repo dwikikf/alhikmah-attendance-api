@@ -1,16 +1,17 @@
 $kind: http-request
 name: Create Student
 method: POST
-url: '{{base_url}}/api/v1/students'
-order: 1000
+url: "{{base_url}}/api/v1/students"
+order: 3000
 headers:
-  - key: Content-Type
-    value: application/json
+  Authorization: Bearer {{auth_token}}
+  Content-Type: application/json
 body:
   type: json
   content: |-
     {
-      "nisn": "0012345678",
+      "nisn": "1234567893",
       "full_name": "Ahmad Fauzi",
-      "class_id": "{{class_id}}"
+      "class_id": "{{class_id}}",
+      "gender": "laki-laki"
     }

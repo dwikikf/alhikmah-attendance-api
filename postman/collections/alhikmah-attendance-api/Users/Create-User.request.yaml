@@ -4,14 +4,15 @@ method: POST
 url: "{{base_url}}/api/v1/users"
 order: 3000
 headers:
+  Authorization: Bearer {{auth_token}}
   Content-Type: application/json
 body:
   type: json
   content: |-
     {
       "username": "dwikikf",
-      "email": "dwikikf@alhikmah.sch.id",
+      "email": "dwikikf@gmail.com",
       "password": "password123",
-      "full_name": "Dwiki Kautsar Fahmi",
+      "full_name": "Dwiki",
       "role": "teacher"
     }

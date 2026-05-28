@@ -10,6 +10,7 @@ import (
 	"alhikmah-attendance-api/internal/domain"
 	"alhikmah-attendance-api/internal/dto"
 	"alhikmah-attendance-api/pkg/response"
+	"alhikmah-attendance-api/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,7 +28,7 @@ func (h *StudentHandler) Create(c *gin.Context) {
 	var req dto.CreateStudentRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
+		c.JSON(http.StatusBadRequest, response.ValidationError("Validasi gagal", utils.FormatValidationError(err)))
 		return
 	}
 
@@ -177,7 +178,7 @@ func (h *StudentHandler) Update(c *gin.Context) {
 	var req dto.UpdateStudentRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
+		c.JSON(http.StatusBadRequest, response.ValidationError("Validasi gagal", utils.FormatValidationError(err)))
 		return
 	}
 
@@ -231,9 +232,9 @@ func (h *StudentHandler) Update(c *gin.Context) {
 		FullName:  req.FullName,
 		ClassID:   req.ClassID,
 		ClassName: className,
-		DOB:       req.DOB,
 		Gender:    req.Gender,
-		IsActive:  req.IsActive,
+		DOB:       req.DOB,
+		IsActive:  *req.IsActive,
 	}
 
 	if err := h.service.Update(student); err != nil {

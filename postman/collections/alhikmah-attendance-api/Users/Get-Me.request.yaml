@@ -1,5 +1,8 @@
 $kind: http-request
-name: Get Current User
+name: Get Me
 method: GET
 url: '{{base_url}}/api/v1/users/me'
 order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{auth_token}}'
