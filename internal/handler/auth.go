@@ -3,6 +3,7 @@ package handler
 import (
 	"database/sql"
 	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -38,6 +39,7 @@ func parseTokenDuration(val string, defaultDuration time.Duration) time.Duration
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Warn("Failed to parse login request", slog.String("error", err.Error()), slog.String("ip", c.ClientIP()))
 		c.JSON(http.StatusBadRequest, response.Error("Invalid request body: "+err.Error()))
 		return
 	}
@@ -59,14 +61,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			slog.Warn("Login failed: user not found or inactive", slog.String("username", req.Username), slog.String("ip", c.ClientIP()))
 			c.JSON(http.StatusUnauthorized, response.Error("Invalid credentials, Not Found"))
 			return
 		}
+		slog.Error("Database error during login", slog.String("username", req.Username), slog.Any("error", err))
 		c.JSON(http.StatusInternalServerError, response.Error("Internal server error"))
 		return
 	}
 
 	if !utils.CheckPasswordHash(req.Password, hash) {
+		slog.Warn("Login failed: invalid password", slog.String("username", req.Username), slog.String("ip", c.ClientIP()))
 		c.JSON(http.StatusUnauthorized, response.Error("Invalid credentials, hash mismatch"))
 		return
 	}
@@ -101,6 +106,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// Name, Value, MaxAge (detik), Path, Domain, Secure, HttpOnly
 	c.SetSameSite(sameSiteMode)
 	c.SetCookie("refresh_token", refreshToken, int(refreshTokenDuration/time.Second), "/", "", isProd, true)
+
+	slog.Info("User logged in successfully", slog.String("username", username), slog.String("role", role), slog.String("ip", c.ClientIP()))
 
 	c.JSON(http.StatusOK, response.Success("Login successful", gin.H{
 		"token": token,

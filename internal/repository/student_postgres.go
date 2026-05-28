@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 
 	"alhikmah-attendance-api/internal/domain"
 )
@@ -21,8 +22,12 @@ func (r *studentPostgres) Create(student *domain.Student) error {
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, is_active, created_at, updated_at
 	`
-	return r.db.QueryRow(query, student.NISN, student.FullName, student.ClassID, student.DOB, student.Gender, student.QRCodeData).
+	err := r.db.QueryRow(query, student.NISN, student.FullName, student.ClassID, student.DOB, student.Gender, student.QRCodeData).
 		Scan(&student.ID, &student.IsActive, &student.CreatedAt, &student.UpdatedAt)
+	if err != nil {
+		slog.Error("Failed to insert student record", slog.Any("error", err), slog.String("nisn", student.NISN))
+	}
+	return err
 }
 
 func (r *studentPostgres) CreateBulk(students []*domain.Student) error {
@@ -47,6 +52,7 @@ func (r *studentPostgres) CreateBulk(students []*domain.Student) error {
 		err := stmt.QueryRow(student.NISN, student.FullName, student.ClassID, student.DOB, student.Gender, student.QRCodeData).
 			Scan(&student.ID, &student.IsActive, &student.CreatedAt, &student.UpdatedAt)
 		if err != nil {
+			slog.Error("Failed to insert student record in bulk", slog.Any("error", err), slog.String("nisn", student.NISN))
 			return err
 		}
 	}
@@ -97,6 +103,9 @@ func (r *studentPostgres) GetByNISN(nisn string) (*domain.Student, error) {
 	`
 	err := r.db.QueryRow(query, nisn).Scan(&s.ID, &s.NISN, &s.FullName, &s.ClassID, &s.QRCodeData, &s.IsActive)
 	if err != nil {
+		if err != sql.ErrNoRows {
+			slog.Error("Failed to get student by NISN", slog.Any("error", err), slog.String("nisn", nisn))
+		}
 		return nil, err
 	}
 	return &s, nil

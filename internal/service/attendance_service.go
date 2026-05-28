@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"log/slog"
 	"time"
 
 	"alhikmah-attendance-api/internal/domain"
@@ -33,6 +34,7 @@ func (s *attendanceService) ProcessQRScan(nisn string, teacherID string, role st
 	// Check if NISN exists in cache to prevent duplicate processing
 	cacheKey := "qr_scan_" + nisn
 	if _, found := s.cache.Get(cacheKey); found {
+		slog.Warn("Duplicate QR scan prevented by cache", slog.String("nisn", nisn))
 		return errors.New("Siswa baru saja melakukan scan QR")
 	}
 
@@ -49,6 +51,7 @@ func (s *attendanceService) ProcessQRScan(nisn string, teacherID string, role st
 			return err
 		}
 		if !isResponsible {
+			slog.Warn("Unauthorized QR scan attempt", slog.String("teacher_id", teacherID), slog.String("student_id", student.ID))
 			return errors.New("Guru tidak memiliki akses untuk kelas siswa ini")
 		}
 	}
@@ -61,6 +64,7 @@ func (s *attendanceService) ProcessQRScan(nisn string, teacherID string, role st
 			if a.StudentID == student.ID {
 				// Save to cache if already scanned today to prevent future db hits
 				s.cache.Set(cacheKey, true, 10*time.Second)
+				slog.Warn("Student already scanned today", slog.String("student_id", student.ID))
 				return errors.New("Siswa sudah melakukan absensi hari ini")
 			}
 		}
@@ -85,6 +89,11 @@ func (s *attendanceService) ProcessQRScan(nisn string, teacherID string, role st
 
 	// Save NISN to cache with a short expiration (e.g., 10 seconds)
 	s.cache.Set(cacheKey, true, 10*time.Second)
+
+	slog.Info("QR Scan Attendance Successful", 
+		slog.String("student_id", student.ID), 
+		slog.String("class_id", student.ClassID),
+		slog.String("teacher_id", teacherID))
 
 	return nil
 }
@@ -136,7 +145,14 @@ func (s *attendanceService) ProcessManualAttendance(studentID string, status str
 		attendance.Notes = &notes
 	}
 
-	return s.repo.MarkAttendance(attendance)
+	err = s.repo.MarkAttendance(attendance)
+	if err == nil {
+		slog.Info("Manual attendance recorded", 
+			slog.String("student_id", studentID), 
+			slog.String("status", status),
+			slog.String("teacher_id", teacherID))
+	}
+	return err
 }
 
 func (s *attendanceService) UpdateManual(attendanceID, status, reason, changedBy string) error {
@@ -164,7 +180,15 @@ func (s *attendanceService) UpdateManual(attendanceID, status, reason, changedBy
 		audit.Reason = &reason
 	}
 
-	return s.repo.UpdateAttendance(attendance, audit)
+	err = s.repo.UpdateAttendance(attendance, audit)
+	if err == nil {
+		slog.Info("Manual attendance updated",
+			slog.String("attendance_id", attendanceID),
+			slog.String("old_status", oldStatus),
+			slog.String("new_status", status),
+			slog.String("changed_by", changedBy))
+	}
+	return err
 }
 
 func (s *attendanceService) GetClassAttendanceForToday(classID string) ([]*domain.Attendance, error) {

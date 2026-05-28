@@ -44,7 +44,9 @@ func LoadConfig(path string) (config Config, err error) {
 
 	err = viper.ReadInConfig()
 	if err != nil {
-		log.Printf("Error reading config file, using environment variables: %s", err)
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			log.Printf("Error reading config file, using environment variables: %s", err)
+		}
 	}
 
 	err = viper.Unmarshal(&config)

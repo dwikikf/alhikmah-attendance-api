@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
+	"os"
 	"time"
 
 	"alhikmah-attendance-api/config"
@@ -10,8 +11,9 @@ import (
 	"alhikmah-attendance-api/internal/middleware"
 	"alhikmah-attendance-api/internal/repository"
 	"alhikmah-attendance-api/internal/service"
-	"alhikmah-attendance-api/pkg/database"
 	"alhikmah-attendance-api/pkg/cache"
+	"alhikmah-attendance-api/pkg/database"
+	"alhikmah-attendance-api/pkg/logger"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -24,13 +26,19 @@ func main() {
 	// 1. Load Configuration
 	cfg, err := config.LoadConfig(".")
 	if err != nil {
-		log.Fatalf("Could not load config: %v", err)
+		slog.Error("Could not load config", slog.Any("error", err))
+		os.Exit(1)
 	}
+
+	// 1.5 Initialize Logger
+	logger.InitLogger(cfg.AppEnv)
+	slog.Info("Logger initialized", "env", cfg.AppEnv)
 
 	// 2. Connect to Database
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
-		log.Fatalf("Could not connect to database: %v", err)
+		slog.Error("Could not connect to database", slog.Any("error", err))
+		os.Exit(1)
 	}
 	defer db.Close()
 
@@ -49,7 +57,7 @@ func main() {
 	userService := service.NewUserService(userRepo)
 	classService := service.NewClassService(classRepo)
 	studentService := service.NewStudentService(studentRepo)
-	
+
 	qrCache := cache.NewCache()
 	attendanceService := service.NewAttendanceService(attendanceRepo, studentRepo, classRepo, qrCache)
 	reportService := service.NewReportService(reportRepo, studentRepo, reportCacheRepo)
@@ -69,6 +77,8 @@ func main() {
 	r := gin.Default()
 
 	// Global Middlewares
+	r.Use(middleware.LoggerMiddleware())
+
 	frontendURL := cfg.FrontendURL
 	if frontendURL == "" {
 		frontendURL = "http://localhost:3000" // Default for local development
@@ -98,7 +108,7 @@ func main() {
 			auth.POST("/logout", middleware.AuthMiddleware(cfg), authHandler.Logout)
 			auth.POST("/refresh-token", authHandler.Refresh)
 			auth.GET("/me", middleware.AuthMiddleware(cfg), userHandler.GetMe)
-			
+
 			// Password Reset Stubs
 			auth.POST("/reset-password", authHandler.ResetPasswordRequest)
 			auth.POST("/reset-password/confirm", authHandler.ResetPasswordConfirm)
@@ -113,7 +123,7 @@ func main() {
 			protected.GET("/users/me", userHandler.GetMe)
 			protected.GET("/users", middleware.RoleMiddleware("admin"), userHandler.GetAll)
 			protected.POST("/users", middleware.RoleMiddleware("admin"), userHandler.Create)
-			protected.PUT("/users/:user_id",middleware.RoleMiddleware("admin"), userHandler.Update)
+			protected.PUT("/users/:user_id", middleware.RoleMiddleware("admin"), userHandler.Update)
 			protected.DELETE("/users/:user_id", middleware.RoleMiddleware("admin"), userHandler.Delete)
 
 			// Classes
@@ -153,9 +163,10 @@ func main() {
 
 	// 8. Start Server
 
-	log.Printf("Starting server on port %s", cfg.Port)
+	slog.Info("Starting server", "port", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		slog.Error("Failed to start server", slog.Any("error", err))
+		os.Exit(1)
 	}
 }
 
@@ -165,12 +176,14 @@ func runDBMigration(cfg config.Config) {
 
 	m, err := migrate.New("file://migrations", dsn)
 	if err != nil {
-		log.Fatalf("Failed to initialize migrations: %v", err)
+		slog.Error("Failed to initialize migrations", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatalf("Failed to run migrations: %v", err)
+		slog.Error("Failed to run migrations", slog.Any("error", err))
+		os.Exit(1)
 	}
 
-	log.Println("Database migrations applied successfully")
+	slog.Info("Database migrations applied successfully")
 }

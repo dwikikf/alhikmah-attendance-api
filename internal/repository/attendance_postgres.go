@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"alhikmah-attendance-api/internal/domain"
@@ -21,7 +22,7 @@ func (r *attendancePostgres) MarkAttendance(attendance *domain.Attendance) error
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, recorded_at
 	`
-	return r.db.QueryRow(
+	err := r.db.QueryRow(
 		query,
 		attendance.StudentID,
 		attendance.ClassID,
@@ -32,6 +33,11 @@ func (r *attendancePostgres) MarkAttendance(attendance *domain.Attendance) error
 		attendance.IsManual,
 		attendance.Notes,
 	).Scan(&attendance.ID, &attendance.RecordedAt)
+
+	if err != nil {
+		slog.Error("Failed to insert attendance record", slog.Any("error", err), slog.String("student_id", attendance.StudentID))
+	}
+	return err
 }
 
 func (r *attendancePostgres) UpdateAttendance(attendance *domain.Attendance, audit *domain.AttendanceAudit) error {
@@ -49,6 +55,7 @@ func (r *attendancePostgres) UpdateAttendance(attendance *domain.Attendance, aud
 	`
 	_, err = tx.Exec(updateQuery, attendance.Status, attendance.RecordedBy, attendance.ID)
 	if err != nil {
+		slog.Error("Failed to update attendance record", slog.Any("error", err), slog.String("attendance_id", attendance.ID))
 		return err
 	}
 
@@ -59,6 +66,7 @@ func (r *attendancePostgres) UpdateAttendance(attendance *domain.Attendance, aud
 	`
 	_, err = tx.Exec(auditQuery, audit.AttendanceID, audit.OldStatus, audit.NewStatus, audit.ChangedBy, audit.Reason)
 	if err != nil {
+		slog.Error("Failed to insert attendance audit record", slog.Any("error", err), slog.String("attendance_id", audit.AttendanceID))
 		return err
 	}
 
@@ -73,6 +81,7 @@ func (r *attendancePostgres) GetByClassAndDate(classID string, date time.Time) (
 	`
 	rows, err := r.db.Query(query, classID, date)
 	if err != nil {
+		slog.Error("Failed to get attendances by class and date", slog.Any("error", err), slog.String("class_id", classID))
 		return nil, err
 	}
 	defer rows.Close()
@@ -122,6 +131,7 @@ func (r *attendancePostgres) GetByID(id string) (*domain.Attendance, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
+		slog.Error("Failed to get attendance by ID", slog.Any("error", err), slog.String("attendance_id", id))
 		return nil, err
 	}
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -94,6 +95,8 @@ func (s *reportService) GetDailyReport(classID, dateStr string, forceRefresh boo
 	if err == nil {
 		s.cache.Set("harian", classID, dateStr, dateStr, generatedBy, data)
 	}
+
+	slog.Info("Daily report generated", slog.String("class_id", classID), slog.String("date", dateStr), slog.String("generated_by", generatedBy))
 
 	return report, nil
 }
@@ -190,6 +193,8 @@ func (s *reportService) GetMonthlyReport(classID, monthStr string, forceRefresh 
 	if err == nil {
 		s.cache.Set("bulanan", classID, startDate, endDate, generatedBy, data)
 	}
+
+	slog.Info("Monthly report generated", slog.String("class_id", classID), slog.String("month", monthStr), slog.String("generated_by", generatedBy))
 
 	return report, nil
 }
@@ -304,6 +309,8 @@ func (s *reportService) GetSemesterReport(classID, academicYear string, semester
 	if err == nil {
 		s.cache.Set("semesteran", classID, startDate, endDate, generatedBy, data)
 	}
+
+	slog.Info("Semester report generated", slog.String("class_id", classID), slog.String("academic_year", academicYear), slog.Int("semester", semester), slog.String("generated_by", generatedBy))
 
 	return report, nil
 }
