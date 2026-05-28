@@ -117,13 +117,17 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 }
 
 func (h *AuthHandler) ResetPasswordRequest(c *gin.Context) {
-	c.JSON(http.StatusOK, response.Success("Password reset requested (stub)", nil))
+	// Fitur dinonaktifkan sementara berdasarkan permintaan
+	// c.JSON(http.StatusOK, response.Success("Password reset requested (stub)", nil))
+	c.JSON(http.StatusForbidden, response.Error("Fitur lupa password dinonaktifkan. Silakan hubungi admin sekolah untuk mereset password Anda. Terima kasih."))
 }
 
 func (h *AuthHandler) ResetPasswordConfirm(c *gin.Context) {
-	c.JSON(http.StatusOK, response.Success("Password reset confirmed (stub)", nil))
+	// c.JSON(http.StatusOK, response.Success("Password reset confirmed (stub)", nil))
+	c.JSON(http.StatusForbidden, response.Error("Fitur lupa password dinonaktifkan. Silakan hubungi admin sekolah. Terima kasih."))
 }
 
 func (h *AuthHandler) ResetPasswordChange(c *gin.Context) {
-	c.JSON(http.StatusOK, response.Success("Password changed successfully (stub)", nil))
+	// c.JSON(http.StatusOK, response.Success("Password changed successfully (stub)", nil))
+	c.JSON(http.StatusForbidden, response.Error("Fitur lupa password dinonaktifkan. Silakan hubungi admin sekolah. Terima kasih."))
 }
