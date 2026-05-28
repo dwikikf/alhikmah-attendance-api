@@ -119,9 +119,10 @@ func (h *UserHandler) Update(c *gin.Context) {
 	// We'll trust the route middleware to have checked this.
 
 	user := &domain.User{
-		ID:       id,
-		FullName: req.FullName,
-		Email:    req.Email,
+		ID:           id,
+		FullName:     req.FullName,
+		Email:        req.Email,
+		PasswordHash: req.Password, // Service will handle this
 	}
 
 	if err := h.service.Update(user); err != nil {

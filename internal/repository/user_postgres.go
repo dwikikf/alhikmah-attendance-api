@@ -95,13 +95,28 @@ func (r *userPostgres) Create(user *domain.User) error {
 }
 
 func (r *userPostgres) Update(user *domain.User) error {
-	query := `
-		UPDATE users 
-		SET full_name = $1, email = $2, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $3
-		RETURNING updated_at
-	`
-	return r.db.QueryRow(query, user.FullName, user.Email, user.ID).Scan(&user.UpdatedAt)
+	var query string
+	var args []interface{}
+
+	if user.PasswordHash != "" {
+		query = `
+			UPDATE users 
+			SET full_name = $1, email = $2, password_hash = $3, updated_at = CURRENT_TIMESTAMP
+			WHERE id = $4
+			RETURNING updated_at
+		`
+		args = []interface{}{user.FullName, user.Email, user.PasswordHash, user.ID}
+	} else {
+		query = `
+			UPDATE users 
+			SET full_name = $1, email = $2, updated_at = CURRENT_TIMESTAMP
+			WHERE id = $3
+			RETURNING updated_at
+		`
+		args = []interface{}{user.FullName, user.Email, user.ID}
+	}
+
+	return r.db.QueryRow(query, args...).Scan(&user.UpdatedAt)
 }
 
 func (r *userPostgres) SoftDelete(id string) error {

@@ -58,6 +58,14 @@ func (s *userService) Update(user *domain.User) error {
 		return errors.New("missing required fields")
 	}
 
+	if user.PasswordHash != "" {
+		hashedPassword, err := utils.HashPassword(user.PasswordHash)
+		if err != nil {
+			return err
+		}
+		user.PasswordHash = hashedPassword
+	}
+
 	return s.repo.Update(user)
 }
 
