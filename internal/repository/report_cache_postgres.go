@@ -47,8 +47,15 @@ func (r *reportCachePostgres) Set(reportType, classID, periodStart, periodEnd, g
 	`
 	var genBy interface{} = generatedBy
 	if generatedBy == "" {
-		// fallback to super_admin UUID because generated_by is NOT NULL
-		genBy = "f88dad22-46d3-4c7a-80eb-7a9272254d23"
+		// fallback to any valid user UUID because generated_by is NOT NULL
+		var fallbackUser string
+		err := r.db.QueryRow("SELECT id FROM users LIMIT 1").Scan(&fallbackUser)
+		if err == nil {
+			genBy = fallbackUser
+		} else {
+			// fallback if somehow users table is empty, though this will likely fail FK constraint
+			genBy = "f88dad22-46d3-4c7a-80eb-7a9272254d23"
+		}
 	}
 
 	_, err := r.db.Exec(query, reportType, classID, periodStart, periodEnd, genBy, data)
