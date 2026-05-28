@@ -92,9 +92,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	isProd := h.Config.AppEnv == "production" || h.Config.AppEnv == "prod"
 
+	sameSiteMode := http.SameSiteLaxMode
+	if isProd {
+		sameSiteMode = http.SameSiteNoneMode
+	}
+
 	// Set refresh token dalam HttpOnly cookie
 	// Name, Value, MaxAge (detik), Path, Domain, Secure, HttpOnly
-	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetSameSite(sameSiteMode)
 	c.SetCookie("refresh_token", refreshToken, int(refreshTokenDuration/time.Second), "/", "", isProd, true)
 
 	c.JSON(http.StatusOK, response.Success("Login successful", gin.H{
@@ -139,7 +144,13 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 func (h *AuthHandler) Logout(c *gin.Context) {
 	isProd := h.Config.AppEnv == "production" || h.Config.AppEnv == "prod"
-	c.SetSameSite(http.SameSiteNoneMode)
+
+	sameSiteMode := http.SameSiteLaxMode
+	if isProd {
+		sameSiteMode = http.SameSiteNoneMode
+	}
+
+	c.SetSameSite(sameSiteMode)
 	c.SetCookie("refresh_token", "", -1, "/", "", isProd, true)
 	c.JSON(http.StatusOK, response.Success("Logout successful", nil))
 }
