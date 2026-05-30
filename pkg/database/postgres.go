@@ -3,15 +3,33 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
+	"os"
 
 	_ "github.com/lib/pq"
 	"alhikmah-attendance-api/config"
 )
 
 func ConnectDB(cfg config.Config) (*sql.DB, error) {
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName)
+	// Support DATABASE_URL (e.g., from Neon) as a single connection string.
+	// Falls back to individual env vars if DATABASE_URL is not set.
+	var dsn string
+	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+		dsn = dbURL
+		slog.Info("Connecting to database via DATABASE_URL")
+	} else {
+		sslmode := cfg.DBSSLMode
+		if sslmode == "" {
+			if cfg.AppEnv == "production" {
+				sslmode = "require"
+			} else {
+				sslmode = "disable"
+			}
+		}
+		dsn = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, sslmode)
+		slog.Info("Connecting to database via individual env vars", "host", cfg.DBHost, "sslmode", sslmode)
+	}
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
@@ -23,6 +41,6 @@ func ConnectDB(cfg config.Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("could not ping the database: %w", err)
 	}
 
-	log.Println("Connected to PostgreSQL successfully")
+	slog.Info("Connected to PostgreSQL successfully")
 	return db, nil
 }

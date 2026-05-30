@@ -1,36 +1,41 @@
-# Build stage
-FROM golang:alpine AS builder
-
-# Set working directory
+# --- STAGE 1: Base ---
+FROM golang:1.26-alpine AS base
 WORKDIR /app
 
-# Copy go mod and sum files
-COPY go.mod ./
-# COPY go.sum ./
+RUN apk add --no-cache git ca-certificates
 
-# Download all dependencies
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the source code
+# --- STAGE 2: Development ---
+FROM base AS dev
+RUN go install github.com/air-verse/air@latest && \
+    go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
 COPY . .
+CMD ["air"]
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api
+# --- STAGE 3: Builder ---
+FROM base AS builder
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-w -s" -o app ./cmd/api
 
-# Production stage
-FROM alpine:latest  
+# --- STAGE 4: Production ---
+FROM alpine:3.20 AS production
 
-# Add CA certificates
-RUN apk --no-cache add ca-certificates
+# Tambahkan tzdata agar kontainer bisa membaca zona waktu WIB/WITA/WIT
+RUN apk add --no-cache ca-certificates tzdata
 
-WORKDIR /root/
+# Set zona waktu default ke Waktu Indonesia Barat (WIB)
+ENV TZ=Asia/Jakarta
 
-# Copy the pre-built binary file from the previous stage
-COPY --from=builder /app/main .
-COPY --from=builder /app/migrations ./migrations
+RUN adduser -D -g '' appuser
+WORKDIR /app
 
-# Expose port 8080 to the outside world
+COPY --from=builder --chown=appuser:appuser /app/app .
+COPY --from=builder --chown=appuser:appuser /app/migrations ./migrations
+
+USER appuser
+
 EXPOSE 8080
-
-# Command to run the executable
-CMD ["./main"]
+CMD ["./app"]
