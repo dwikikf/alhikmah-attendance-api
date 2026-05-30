@@ -18,7 +18,8 @@ services:
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-supersecretrefreshjwttoken}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - attendance-network
 
@@ -33,6 +34,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-alhikmah_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - attendance-network
 
