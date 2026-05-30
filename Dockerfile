@@ -7,12 +7,19 @@ RUN apk add --no-cache git ca-certificates
 COPY go.mod go.sum ./
 RUN go mod download
 
-# --- STAGE 2: Builder ---
+# --- STAGE 2: Development ---
+FROM base AS dev
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1
+
+COPY . .
+CMD ["go", "run", "./cmd/api"]
+
+# --- STAGE 3: Builder ---
 FROM base AS builder
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-w -s" -o app ./cmd/api
 
-# --- STAGE 3: Production ---
+# --- STAGE 4: Production ---
 FROM alpine:3.22 AS production
 
 # Tambahkan tzdata agar kontainer bisa membaca zona waktu WIB/WITA/WIT
