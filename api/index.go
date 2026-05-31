@@ -1,0 +1,175 @@
+package api
+
+import (
+	"log/slog"
+	"net/http"
+	"sync"
+	"time"
+
+	"alhikmah-attendance-api/config"
+	"alhikmah-attendance-api/internal/handler"
+	"alhikmah-attendance-api/internal/middleware"
+	"alhikmah-attendance-api/internal/repository"
+	"alhikmah-attendance-api/internal/service"
+	"alhikmah-attendance-api/pkg/cache"
+	"alhikmah-attendance-api/pkg/database"
+	"alhikmah-attendance-api/pkg/logger"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+var (
+	app  *gin.Engine
+	once sync.Once
+)
+
+// initApp mengatur semua dependensi dan routing mirip dengan main.go
+// tetapi TIDAK menjalankan migrasi database untuk menghemat waktu cold-start di Vercel.
+func initApp() {
+	// 1. Load Configuration
+	cfg, err := config.LoadConfig(".")
+	if err != nil {
+		slog.Error("Could not load config", slog.Any("error", err))
+	}
+
+	// 1.5 Initialize Logger
+	logger.InitLogger(cfg.AppEnv)
+	slog.Info("Vercel Serverless Logger initialized", "env", cfg.AppEnv)
+
+	// 2. Connect to Database
+	db, err := database.ConnectDB(cfg)
+	if err != nil {
+		slog.Error("Could not connect to database", slog.Any("error", err))
+	}
+	// Note: We don't defer db.Close() here because Vercel might reuse the container for subsequent requests.
+	// The standard lib sql.DB handles connection pooling safely.
+
+	// 3. Initialize Repositories
+	userRepo := repository.NewUserRepository(db)
+	classRepo := repository.NewClassRepository(db)
+	studentRepo := repository.NewStudentRepository(db)
+	attendanceRepo := repository.NewAttendanceRepository(db)
+	reportRepo := repository.NewReportRepository(db)
+	reportCacheRepo := repository.NewReportCacheRepository(db)
+
+	// 4. Initialize Services
+	userService := service.NewUserService(userRepo)
+	classService := service.NewClassService(classRepo)
+	studentService := service.NewStudentService(studentRepo)
+
+	qrCache := cache.NewCache()
+	attendanceService := service.NewAttendanceService(attendanceRepo, studentRepo, classRepo, qrCache)
+	reportService := service.NewReportService(reportRepo, studentRepo, reportCacheRepo)
+
+	// 5. Initialize Handlers
+	authHandler := &handler.AuthHandler{
+		DB:     db,
+		Config: cfg,
+	}
+	userHandler := handler.NewUserHandler(userService)
+	classHandler := handler.NewClassHandler(classService, studentService)
+	studentHandler := handler.NewStudentHandler(studentService, classService)
+	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
+	reportHandler := handler.NewReportHandler(reportService)
+
+	// 6. Setup Gin Router
+	r := gin.Default()
+
+	// Global Middlewares
+	r.Use(middleware.LoggerMiddleware())
+
+	frontendURL := cfg.FrontendURL
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000" // Default for local development
+	}
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{frontendURL},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "sentry-trace", "baggage"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	// API Routes Group
+	apiGroup := r.Group("/api/v1")
+	{
+		// Health Check
+		apiGroup.GET("/health", func(c *gin.Context) {
+			c.JSON(200, gin.H{"status": "UP (Serverless)"})
+		})
+
+		// Auth Routes
+		auth := apiGroup.Group("/auth")
+		{
+			auth.POST("/login", authHandler.Login)
+			auth.POST("/logout", middleware.AuthMiddleware(cfg), authHandler.Logout)
+			auth.POST("/refresh-token", authHandler.Refresh)
+			auth.GET("/me", middleware.AuthMiddleware(cfg), userHandler.GetMe)
+
+			// Password Reset Stubs
+			auth.POST("/reset-password", authHandler.ResetPasswordRequest)
+			auth.POST("/reset-password/confirm", authHandler.ResetPasswordConfirm)
+			auth.POST("/reset-password/change", middleware.AuthMiddleware(cfg), authHandler.ResetPasswordChange)
+		}
+
+		// Protected Routes
+		protected := apiGroup.Group("/")
+		protected.Use(middleware.AuthMiddleware(cfg))
+		{
+			// Users
+			protected.GET("/users/me", userHandler.GetMe)
+			protected.GET("/users", middleware.RoleMiddleware("admin"), userHandler.GetAll)
+			protected.POST("/users", middleware.RoleMiddleware("admin"), userHandler.Create)
+			protected.PUT("/users/:user_id", middleware.RoleMiddleware("admin"), userHandler.Update)
+			protected.DELETE("/users/:user_id", middleware.RoleMiddleware("admin"), userHandler.Delete)
+
+			// Classes
+			protected.GET("/classes", classHandler.GetAll)
+			protected.GET("/classes/:class_id", classHandler.GetByID)
+			protected.GET("/classes/:class_id/export-excel", classHandler.ExportExcel)
+			protected.GET("/classes/:class_id/export-qrcode", classHandler.ExportQRCode)
+			protected.POST("/classes", middleware.RoleMiddleware("admin", "teacher"), classHandler.Create)
+			protected.PUT("/classes/:class_id", middleware.RoleMiddleware("admin", "teacher"), classHandler.Update)
+			protected.DELETE("/classes/:class_id", middleware.RoleMiddleware("admin", "teacher"), classHandler.Delete)
+
+			// Students
+			protected.GET("/students", studentHandler.GetAll)
+			protected.GET("/students/:student_id", studentHandler.GetByID)
+			protected.POST("/students", studentHandler.Create)
+			protected.POST("/students/import", studentHandler.ImportCSV)
+			protected.PUT("/students/:student_id", studentHandler.Update)
+			protected.DELETE("/students/:student_id", studentHandler.Delete)
+			protected.GET("/classes/:class_id/students", studentHandler.GetByClass)
+			protected.GET("/students/:student_id/qrcode", studentHandler.GetQRCode)
+
+			// Attendance
+			protected.POST("/attendances/qr-scan", attendanceHandler.ScanQR)
+			protected.POST("/attendances/manual", attendanceHandler.ManualInput)
+			protected.PUT("/attendances/:attendance_id", attendanceHandler.Update)
+			protected.GET("/classes/:class_id/attendances/today", attendanceHandler.GetClassAttendanceForToday)
+			protected.GET("/attendances/:class_id/:date", attendanceHandler.GetByClassAndDate)
+
+			// Reports
+			protected.GET("/reports/daily", reportHandler.GetDailyReport)
+			protected.GET("/reports/monthly", reportHandler.GetMonthlyReport)
+			protected.GET("/reports/semester", reportHandler.GetSemesterReport)
+			protected.GET("/reports/student/:student_id", reportHandler.GetStudentReport)
+			protected.POST("/reports/export", reportHandler.Export)
+		}
+	}
+
+	app = r
+}
+
+// Handler adalah entrypoint utama yang dipanggil oleh Vercel.
+func Handler(w http.ResponseWriter, r *http.Request) {
+	// initApp hanya akan dipanggil sekali (Singleton) meskipun ada banyak request masuk,
+	// sehingga koneksi database bisa digunakan kembali jika container masih hidup.
+	once.Do(initApp)
+	
+	// Serahkan request ke Gin Engine
+	app.ServeHTTP(w, r)
+}
