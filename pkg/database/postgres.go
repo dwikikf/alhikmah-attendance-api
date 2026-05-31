@@ -41,6 +41,14 @@ func ConnectDB(cfg config.Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("could not ping the database: %w", err)
 	}
 
+	// Optimasi khusus untuk Vercel Serverless
+	// Vercel membekukan (freeze) container saat tidak ada request.
+	// Jika kita menyimpan koneksi menganggur (idle), koneksi tersebut akan terputus paksa oleh Neon.
+	// Ini menyebabkan error 500 pada request pertama, lalu sukses pada request kedua (karena membuka koneksi baru).
+	if os.Getenv("VERCEL") == "1" {
+		db.SetMaxIdleConns(0)
+	}
+
 	slog.Info("Connected to PostgreSQL successfully")
 	return db, nil
 }
