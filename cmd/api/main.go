@@ -162,9 +162,13 @@ func main() {
 	}
 
 	// 8. Start Server
+	port := cfg.Port
+	if port == "" {
+		port = "8080"
+	}
 
-	slog.Info("Starting server", "port", cfg.Port)
-	if err := r.Run(":" + cfg.Port); err != nil {
+	slog.Info("Starting server", "port", port)
+	if err := r.Run(":" + port); err != nil {
 		slog.Error("Failed to start server", slog.Any("error", err))
 		os.Exit(1)
 	}
