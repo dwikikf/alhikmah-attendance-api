@@ -74,7 +74,8 @@ func main() {
 	reportHandler := handler.NewReportHandler(reportService)
 
 	// 7. Setup Gin Router
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
 
 	// Global Middlewares
 	r.Use(middleware.LoggerMiddleware())
