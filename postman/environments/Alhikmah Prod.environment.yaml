@@ -1,0 +1,10 @@
+name: Alhikmah Prod
+values:
+  - key: base_url
+    value: 'http://localhost:8080'
+  - key: user_id
+    value: ''
+  - key: class_id
+    value: ''
+  - key: auth_token
+    value: ''

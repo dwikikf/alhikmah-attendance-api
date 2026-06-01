@@ -14,6 +14,12 @@ func LoggerMiddleware() gin.HandlerFunc {
 		path := c.Request.URL.Path
 		query := c.Request.URL.RawQuery
 
+		// Abaikan logging untuk rute health check agar log tidak spam
+		if path == "/" || path == "/api/v1/health" {
+			c.Next()
+			return
+		}
+
 		// Process request
 		c.Next()
 
