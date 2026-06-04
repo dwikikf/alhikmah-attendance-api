@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"alhikmah-attendance-api/config"
-	"alhikmah-attendance-api/core/handler"
-	"alhikmah-attendance-api/core/middleware"
-	"alhikmah-attendance-api/core/repository"
-	"alhikmah-attendance-api/core/service"
+	"alhikmah-attendance-api/internal/handler"
+	"alhikmah-attendance-api/internal/middleware"
+	"alhikmah-attendance-api/internal/repository"
+	"alhikmah-attendance-api/internal/service"
 	"alhikmah-attendance-api/pkg/cache"
 	"alhikmah-attendance-api/pkg/database"
 	"alhikmah-attendance-api/pkg/logger"
@@ -52,6 +52,8 @@ func main() {
 	attendanceRepo := repository.NewAttendanceRepository(db)
 	reportRepo := repository.NewReportRepository(db)
 	reportCacheRepo := repository.NewReportCacheRepository(db)
+	enrollmentRepo := repository.NewEnrollmentRepository(db)
+	classTeacherRepo := repository.NewClassTeacherRepository(db)
 
 	// 5. Initialize Services
 	userService := service.NewUserService(userRepo)
@@ -61,6 +63,8 @@ func main() {
 	qrCache := cache.NewCache()
 	attendanceService := service.NewAttendanceService(attendanceRepo, studentRepo, classRepo, qrCache)
 	reportService := service.NewReportService(reportRepo, studentRepo, reportCacheRepo)
+	enrollmentService := service.NewEnrollmentService(enrollmentRepo, studentRepo, classRepo)
+	classTeacherService := service.NewClassTeacherService(classTeacherRepo, userRepo, classRepo)
 
 	// 6. Initialize Handlers
 	authHandler := &handler.AuthHandler{
@@ -72,6 +76,8 @@ func main() {
 	studentHandler := handler.NewStudentHandler(studentService, classService)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 	reportHandler := handler.NewReportHandler(reportService)
+	enrollmentHandler := handler.NewEnrollmentHandler(enrollmentService)
+	classTeacherHandler := handler.NewClassTeacherHandler(classTeacherService)
 
 	// 7. Setup Gin Router
 	r := gin.New()
@@ -126,6 +132,7 @@ func main() {
 			protected.POST("/users", middleware.RoleMiddleware("admin"), userHandler.Create)
 			protected.PUT("/users/:user_id", middleware.RoleMiddleware("admin"), userHandler.Update)
 			protected.DELETE("/users/:user_id", middleware.RoleMiddleware("admin"), userHandler.Delete)
+			protected.GET("/teachers/:teacher_id/subjects", classTeacherHandler.GetSubjectAssignments)
 
 			// Classes
 			protected.GET("/classes", classHandler.GetAll)
@@ -135,6 +142,16 @@ func main() {
 			protected.POST("/classes", middleware.RoleMiddleware("admin", "teacher"), classHandler.Create)
 			protected.PUT("/classes/:class_id", middleware.RoleMiddleware("admin", "teacher"), classHandler.Update)
 			protected.DELETE("/classes/:class_id", middleware.RoleMiddleware("admin", "teacher"), classHandler.Delete)
+			
+			// Enrollments (Class-level)
+			protected.POST("/classes/:class_id/enroll", middleware.RoleMiddleware("admin"), enrollmentHandler.Enroll)
+			protected.POST("/classes/:class_id/promote", middleware.RoleMiddleware("admin"), enrollmentHandler.PromoteClass)
+			protected.GET("/classes/:class_id/enrollments", enrollmentHandler.GetActiveByClassID)
+
+			// Class Teachers (Muatan Lokal)
+			protected.POST("/classes/:class_id/teachers", middleware.RoleMiddleware("admin"), classTeacherHandler.Assign)
+			protected.DELETE("/classes/:class_id/teachers/:teacher_id", middleware.RoleMiddleware("admin"), classTeacherHandler.Unassign)
+			protected.GET("/classes/:class_id/teachers", classTeacherHandler.GetByClassID)
 
 			// Students
 			protected.GET("/students", studentHandler.GetAll)
@@ -145,6 +162,10 @@ func main() {
 			protected.DELETE("/students/:student_id", studentHandler.Delete)
 			protected.GET("/classes/:class_id/students", studentHandler.GetByClass)
 			protected.GET("/students/:student_id/qrcode", studentHandler.GetQRCode)
+
+			// Enrollments (Student-level)
+			protected.POST("/students/:student_id/transfer", middleware.RoleMiddleware("admin"), enrollmentHandler.TransferStudent)
+			protected.GET("/students/:student_id/enrollments", enrollmentHandler.GetHistoryByStudentID)
 
 			// Attendance
 			protected.POST("/attendances/qr-scan", attendanceHandler.ScanQR)

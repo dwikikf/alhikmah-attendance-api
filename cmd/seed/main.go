@@ -61,7 +61,7 @@ func seedDataWithGofakeit(db *sql.DB) {
 	}()
 
 	// Hapus semua data yang ada sebelumnya agar bersih dan tidak conflict
-	_, err = tx.Exec(`TRUNCATE TABLE reports, attendance_audits, attendances, students, class_teachers, classes, users RESTART IDENTITY CASCADE;`)
+	_, err = tx.Exec(`TRUNCATE TABLE reports, attendance_audits, attendances, student_enrollments, students, class_teachers, classes, users RESTART IDENTITY CASCADE;`)
 	if err != nil {
 		log.Printf("Warning: Could not truncate tables: %v", err)
 	}
@@ -86,36 +86,60 @@ func seedDataWithGofakeit(db *sql.DB) {
 	}
 
 	// 3. Buat 6 Kelas
-	classNames := []string{
-		"Kelas 1 ( Al-Khawarizmi )",
-		"Kelas 2 ( Ibnu Sina )",
-		"Kelas 3 ( Al-Kindi )",
-		"Kelas 4 ( Al-Farabi )",
-		"Kelas 5 ( Ibnu Khaldun )",
-		"Kelas 6 ( Jabir bin Hayyan )",
+	type ClassData struct {
+		RoomName string
+		Grade    int
+		Section  *int
+	}
+	
+	sec1, sec2 := 1, 2
+	classDataList := []ClassData{
+		{"Aqoba", 1, nil},
+		{"Madinah", 1, &sec1},
+		{"Madinah", 1, &sec2},
+		{"Mekkah", 2, &sec1},
+		{"Mekkah", 2, &sec2},
+		{"Arofah", 3, nil},
 	}
 
 	var classes []string
 	academicYear := "2025/2026"
 
-	for i, className := range classNames {
+	for i, cData := range classDataList {
 		teacherID := teachers[i] // 6 guru pertama jadi wali kelas
 
 		classID := gofakeit.UUID()
+		
+		className := fmt.Sprintf("Kelas %d %s", cData.Grade, cData.RoomName)
+		if cData.Section != nil {
+			className += fmt.Sprintf(" %d", *cData.Section)
+		}
+
 		_, err = tx.Exec(`
-			INSERT INTO classes (id, class_name, teacher_id, academic_year, capacity, description)
-			VALUES ($1, $2, $3, $4, $5, $6)
-		`, classID, className, teacherID, academicYear, 40, gofakeit.Sentence(5))
+			INSERT INTO classes (id, class_name, room_name, grade, section, teacher_id, academic_year, capacity, description)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		`, classID, className, cData.RoomName, cData.Grade, cData.Section, teacherID, academicYear, 40, gofakeit.Sentence(5))
 		if err != nil {
 			panic(err)
 		}
 		classes = append(classes, classID)
 
-		// Hubungkan ke class_teachers
+		// Hubungkan ke class_teachers sebagai wali kelas
 		_, err = tx.Exec(`
-			INSERT INTO class_teachers (teacher_id, class_id, academic_year)
-			VALUES ($1, $2, $3)
-		`, teacherID, classID, academicYear)
+			INSERT INTO class_teachers (teacher_id, class_id, academic_year, subject, role)
+			VALUES ($1, $2, $3, $4, $5)
+		`, teacherID, classID, academicYear, nil, "homeroom_teacher")
+		if err != nil {
+			panic(err)
+		}
+		
+		// Hubungkan guru ke-7 sebagai subject teacher PJOK untuk semua kelas
+		pjokTeacherID := teachers[6]
+		_, err = tx.Exec(`
+			INSERT INTO class_teachers (teacher_id, class_id, academic_year, subject, role)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT DO NOTHING
+		`, pjokTeacherID, classID, academicYear, "PJOK", "subject_teacher")
 		if err != nil {
 			panic(err)
 		}
@@ -161,6 +185,15 @@ func seedDataWithGofakeit(db *sql.DB) {
 				panic(err)
 			}
 			studentCounter++
+			
+			// Tambahkan ke student_enrollments
+			_, err = tx.Exec(`
+				INSERT INTO student_enrollments (student_id, class_id, academic_year, enrolled_at)
+				VALUES ($1, $2, $3, $4)
+			`, studentID, classID, academicYear, startDate)
+			if err != nil {
+				panic(err)
+			}
 
 			// Kehadiran per siswa untuk tiap hari kerja
 			for _, date := range dates {
@@ -174,6 +207,19 @@ func seedDataWithGofakeit(db *sql.DB) {
 				`, attendanceID, studentID, classID, date, status, teacherID, date.Add(time.Hour*8), gofakeit.Bool())
 				if err != nil {
 					panic(err)
+				}
+				
+				// Tambah absen PJOK (Subject Teacher) kadang-kadang
+				if gofakeit.Number(1, 100) <= 20 { // 20% hari ada pelajaran PJOK
+					pjokAttID := gofakeit.UUID()
+					pjokTeacherID := teachers[6] // Guru ke 7 yang jadi guru PJOK
+					_, err = tx.Exec(`
+						INSERT INTO attendances (id, student_id, class_id, attendance_date, status, recorded_by, recorded_at, is_manual, subject)
+						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+					`, pjokAttID, studentID, classID, date, status, pjokTeacherID, date.Add(time.Hour*11), gofakeit.Bool(), "PJOK")
+					if err != nil {
+						panic(err)
+					}
 				}
 
 				// Fake Audit secara random (2% chance)
