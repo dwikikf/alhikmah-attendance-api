@@ -17,17 +17,35 @@ func NewStudentRepository(db *sql.DB) domain.StudentRepository {
 }
 
 func (r *studentPostgres) Create(student *domain.Student) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	query := `
 		INSERT INTO students (nisn, full_name, class_id, date_of_birth, gender, qr_code_data)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, is_active, created_at, updated_at
 	`
-	err := r.db.QueryRow(query, student.NISN, student.FullName, student.ClassID, student.DOB, student.Gender, student.QRCodeData).
+	err = tx.QueryRow(query, student.NISN, student.FullName, student.ClassID, student.DOB, student.Gender, student.QRCodeData).
 		Scan(&student.ID, &student.IsActive, &student.CreatedAt, &student.UpdatedAt)
 	if err != nil {
 		slog.Error("Failed to insert student record", slog.Any("error", err), slog.String("nisn", student.NISN))
+		return err
 	}
-	return err
+
+	enrollQuery := `
+		INSERT INTO student_enrollments (student_id, class_id, academic_year, enrolled_at)
+		VALUES ($1, $2, (SELECT academic_year FROM classes WHERE id = $2), NOW())
+	`
+	_, err = tx.Exec(enrollQuery, student.ID, student.ClassID)
+	if err != nil {
+		slog.Error("Failed to insert initial student enrollment", slog.Any("error", err), slog.String("student_id", student.ID))
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *studentPostgres) CreateBulk(students []*domain.Student) error {
@@ -48,11 +66,27 @@ func (r *studentPostgres) CreateBulk(students []*domain.Student) error {
 	}
 	defer stmt.Close()
 
+	enrollQuery := `
+		INSERT INTO student_enrollments (student_id, class_id, academic_year, enrolled_at)
+		VALUES ($1, $2, (SELECT academic_year FROM classes WHERE id = $2), NOW())
+	`
+	enrollStmt, err := tx.Prepare(enrollQuery)
+	if err != nil {
+		return err
+	}
+	defer enrollStmt.Close()
+
 	for _, student := range students {
 		err := stmt.QueryRow(student.NISN, student.FullName, student.ClassID, student.DOB, student.Gender, student.QRCodeData).
 			Scan(&student.ID, &student.IsActive, &student.CreatedAt, &student.UpdatedAt)
 		if err != nil {
 			slog.Error("Failed to insert student record in bulk", slog.Any("error", err), slog.String("nisn", student.NISN))
+			return err
+		}
+
+		_, err = enrollStmt.Exec(student.ID, student.ClassID)
+		if err != nil {
+			slog.Error("Failed to insert initial student enrollment in bulk", slog.Any("error", err), slog.String("student_id", student.ID))
 			return err
 		}
 	}
@@ -65,12 +99,11 @@ func (r *studentPostgres) GetByID(id string) (*domain.Student, error) {
 	var dob, gender, photoURL sql.NullString
 
 	query := `
-		SELECT s.id, s.nisn, s.full_name, e.class_id, c.room_name, c.grade, c.section,
+		SELECT s.id, s.nisn, s.full_name, s.class_id, c.room_name, c.grade, c.section,
 		       s.date_of_birth, s.gender, s.photo_url, s.qr_code_data,
 		       s.is_active, s.created_at, s.updated_at
 		FROM students s
-		LEFT JOIN student_enrollments e ON s.id = e.student_id AND e.ended_at IS NULL
-		LEFT JOIN classes c ON e.class_id = c.id
+		LEFT JOIN classes c ON s.class_id = c.id
 		WHERE s.id = $1 AND s.deleted_at IS NULL
 	`
 	var roomName sql.NullString
@@ -112,9 +145,8 @@ func (r *studentPostgres) GetByID(id string) (*domain.Student, error) {
 func (r *studentPostgres) GetByNISN(nisn string) (*domain.Student, error) {
 	var s domain.Student
 	query := `
-		SELECT s.id, s.nisn, s.full_name, e.class_id, s.qr_code_data, s.is_active
+		SELECT s.id, s.nisn, s.full_name, s.class_id, s.qr_code_data, s.is_active
 		FROM students s
-		LEFT JOIN student_enrollments e ON s.id = e.student_id AND e.ended_at IS NULL
 		WHERE s.nisn = $1 AND s.is_active = true AND s.deleted_at IS NULL
 	`
 	var classID sql.NullString
@@ -133,10 +165,9 @@ func (r *studentPostgres) GetByNISN(nisn string) (*domain.Student, error) {
 
 func (r *studentPostgres) GetByClassID(classID string) ([]*domain.Student, error) {
 	query := `
-		SELECT s.id, s.nisn, s.full_name, e.class_id, s.qr_code_data, s.is_active, s.created_at
+		SELECT s.id, s.nisn, s.full_name, s.class_id, s.qr_code_data, s.is_active, s.created_at
 		FROM students s
-		JOIN student_enrollments e ON s.id = e.student_id AND e.ended_at IS NULL
-		WHERE e.class_id = $1 AND s.is_active = true AND s.deleted_at IS NULL
+		WHERE s.class_id = $1 AND s.is_active = true AND s.deleted_at IS NULL
 		ORDER BY s.full_name ASC
 	`
 	rows, err := r.db.Query(query, classID)
@@ -170,7 +201,7 @@ func (r *studentPostgres) GetAll(teacherID string, isActive *bool, classID, sear
 	}
 
 	if classID != "" {
-		whereClause += fmt.Sprintf(" AND e.class_id = $%d", argId)
+		whereClause += fmt.Sprintf(" AND s.class_id = $%d", argId)
 		args = append(args, classID)
 		argId++
 	}
@@ -187,10 +218,9 @@ func (r *studentPostgres) GetAll(teacherID string, isActive *bool, classID, sear
 		argId++
 	}
 
-	countQuery := "SELECT COUNT(*) FROM students s " +
-		"LEFT JOIN student_enrollments e ON s.id = e.student_id AND e.ended_at IS NULL "
+	countQuery := "SELECT COUNT(*) FROM students s "
 	if teacherID != "" {
-		countQuery += "LEFT JOIN classes c ON e.class_id = c.id "
+		countQuery += "LEFT JOIN classes c ON s.class_id = c.id "
 	}
 	countQuery += whereClause
 	var total int
@@ -199,9 +229,9 @@ func (r *studentPostgres) GetAll(teacherID string, isActive *bool, classID, sear
 		return nil, 0, err
 	}
 
-	query := "SELECT s.id, s.nisn, s.full_name, e.class_id, c.room_name, c.grade, c.section, s.date_of_birth, s.gender, s.photo_url, s.qr_code_data, s.is_active, s.created_at, s.updated_at " +
-		"FROM students s LEFT JOIN student_enrollments e ON s.id = e.student_id AND e.ended_at IS NULL " +
-		"LEFT JOIN classes c ON e.class_id = c.id " + whereClause + " " +
+	query := "SELECT s.id, s.nisn, s.full_name, s.class_id, c.room_name, c.grade, c.section, s.date_of_birth, s.gender, s.photo_url, s.qr_code_data, s.is_active, s.created_at, s.updated_at " +
+		"FROM students s " +
+		"LEFT JOIN classes c ON s.class_id = c.id " + whereClause + " " +
 		"ORDER BY s.full_name ASC "
 
 	query += fmt.Sprintf("LIMIT $%d OFFSET $%d", argId, argId+1)

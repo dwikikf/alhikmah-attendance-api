@@ -17,16 +17,29 @@ func NewEnrollmentRepository(db *sql.DB) domain.EnrollmentRepository {
 }
 
 func (r *enrollmentPostgres) Enroll(e *domain.StudentEnrollment) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	query := `
 		INSERT INTO student_enrollments (student_id, class_id, academic_year, enrolled_at)
 		VALUES ($1, $2, $3, NOW())
 		RETURNING id, enrolled_at
 	`
-	err := r.db.QueryRow(query, e.StudentID, e.ClassID, e.AcademicYear).Scan(&e.ID, &e.EnrolledAt)
+	err = tx.QueryRow(query, e.StudentID, e.ClassID, e.AcademicYear).Scan(&e.ID, &e.EnrolledAt)
 	if err != nil {
 		return fmt.Errorf("failed to enroll student: %v", err)
 	}
-	return nil
+
+	updateQuery := `UPDATE students SET class_id = $1, updated_at = NOW() WHERE id = $2`
+	_, err = tx.Exec(updateQuery, e.ClassID, e.StudentID)
+	if err != nil {
+		return fmt.Errorf("failed to update student class_id: %v", err)
+	}
+
+	return tx.Commit()
 }
 
 func (r *enrollmentPostgres) GetActiveByStudentID(studentID string) (*domain.StudentEnrollment, error) {
@@ -220,6 +233,12 @@ func (r *enrollmentPostgres) BulkEnroll(items []domain.PromoteItem, academicYear
 
 		// Insert new enrollment
 		_, err = stmt.Exec(item.StudentID, item.TargetClassID, academicYear)
+		if err != nil {
+			return 0, err
+		}
+		// Update students table
+		updateQuery := `UPDATE students SET class_id = $1, updated_at = NOW() WHERE id = $2`
+		_, err = tx.Exec(updateQuery, item.TargetClassID, item.StudentID)
 		if err != nil {
 			return 0, err
 		}

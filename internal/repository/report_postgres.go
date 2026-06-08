@@ -43,15 +43,18 @@ func (r *reportPostgres) GetDailyReportRaw(classID, dateStr, subject string) ([]
 	// Better parameterization
 	query = `
 		SELECT s.nisn, s.full_name, COALESCE(CAST(a.status AS TEXT), 'belum_absen') as status, a.scanned_at, COALESCE(a.is_manual, false)
-		FROM students s
-		LEFT JOIN attendances a ON s.id = a.student_id AND a.attendance_date = $1 
+		FROM student_enrollments e
+		JOIN students s ON e.student_id = s.id
+		LEFT JOIN attendances a ON s.id = a.student_id AND a.attendance_date = $1 AND a.class_id = $2
 	`
 	if subject == "" {
 		query += " AND a.subject IS NULL"
 	} else {
 		query += " AND a.subject = $3"
 	}
-	query += ` WHERE s.class_id = $2 AND s.is_active = true
+	query += ` WHERE e.class_id = $2 AND s.is_active = true
+		AND e.enrolled_at::DATE <= $1 
+		AND (e.ended_at IS NULL OR e.ended_at::DATE >= $1)
 		ORDER BY s.full_name ASC`
 		
 	var rows *sql.Rows
@@ -98,15 +101,18 @@ func (r *reportPostgres) GetAggregatedReportRaw(classID, startDate, endDate, sub
 				) FILTER (WHERE a.attendance_date IS NOT NULL), 
 				'{}'
 			) as daily_statuses
-		FROM students s
-		LEFT JOIN attendances a ON s.id = a.student_id AND a.attendance_date >= $1 AND a.attendance_date <= $2
+		FROM student_enrollments e
+		JOIN students s ON e.student_id = s.id
+		LEFT JOIN attendances a ON s.id = a.student_id AND a.class_id = $3 AND a.attendance_date >= $1 AND a.attendance_date <= $2
 	`
 	if subject == "" {
 		query += " AND a.subject IS NULL"
 	} else {
 		query += " AND a.subject = $4"
 	}
-	query += ` WHERE s.class_id = $3 AND s.is_active = true
+	query += ` WHERE e.class_id = $3 AND s.is_active = true
+		AND e.enrolled_at::DATE <= $2
+		AND (e.ended_at IS NULL OR e.ended_at::DATE >= $1)
 		GROUP BY s.id, s.nisn, s.full_name
 		ORDER BY s.full_name ASC
 	`
